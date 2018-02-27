@@ -5,6 +5,7 @@ import subprocess
 import nibabel
 import numpy
 from glob import glob
+from mrtrix3 import app, file, fsl, image, path, run
 
 __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 'version')).read()
@@ -65,13 +66,39 @@ else:
 if args.analysis_level == "participant":
 
     # find all T1s and skullstrip them
+    # for subject_label in subjects_to_analyze:
+    #     for T1_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
+    #                                      "anat", "*_T1w.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","anat", "*_T1w.nii*")):
+    #         out_file = os.path.split(T1_file)[-1].replace("_T1w.", "_brain.")
+    #         cmd = "bet %s %s"%(T1_file, os.path.join(args.output_dir, out_file))
+    #         print(cmd)
+    #         run(cmd)
+
+    # find all DWI files and run denoising and tensor / residual calculation
     for subject_label in subjects_to_analyze:
-        for T1_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
-                                         "anat", "*_T1w.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","anat", "*_T1w.nii*")):
-            out_file = os.path.split(T1_file)[-1].replace("_T1w.", "_brain.")
-            cmd = "bet %s %s"%(T1_file, os.path.join(args.output_dir, out_file))
+        for dwi_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
+                                          "dwi", "*_dwi.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
+
+            # Step 1: Denoise
+            # run.command('dwidenoise ' + dwidenoise_input + ' dwi_denoised.' + ('nii' if unring_cmd else 'mif'))
+            # if unring_cmd:
+            #   run.command('mrinfo ' + dwidenoise_input + ' -json_keyval input.json')
+            # file.delTemporary(dwidenoise_input)
+            #
+            # # Step 2: Gibbs ringing removal (if available)
+            # if unring_cmd:
+            #     run.command(unring_cmd + ' dwi_denoised.nii dwi_unring' + fsl_suffix + ' -n 100')
+            #     file.delTemporary('dwi_denoised.nii')
+            #     unring_output_path = fsl.findImage('dwi_unring')
+            #     run.command('mrconvert ' + unring_output_path + ' dwi_unring.mif -json_import input.json')
+            #     file.delTemporary(unring_output_path)
+            #     file.delTemporary('input.json')
+
+            out_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_denoised.")
+            noise_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_noise.")
+            cmd = "dwidenoise %s %s -noise %s"%(dwi_file, os.path.join(args.output_dir, out_file), os.path.join(args.output_dir, noise_file))
             print(cmd)
-            run(cmd)
+            run.command(cmd)
 
 # running group level
 elif args.analysis_level == "group":
