@@ -27,6 +27,10 @@ RUN git clone https://github.com/MRtrix3/mrtrix3.git mrtrix3 && \
     NUMBER_OF_PROCESSORS=1 python build && \
     git describe --tags > /mrtrix3_version
 
+# set mrtrix environment variables
+ENV PATH=:/mrtrix3/bin:$PATH
+ENV PYTHONPATH=/mrtrix3/lib
+
 COPY run.py /run.py
 
 COPY version /version

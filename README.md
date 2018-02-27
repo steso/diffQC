@@ -2,13 +2,17 @@
 
 ### Development
 User this command to build/rebuild docker container:
-
+'''sh
 		docker build -t diff_qc diffQC/
-
+'''
 Run participant-level analysis with testbench bids-dataset:
-
-		docker run -ti --rm -v ~/polybox/bids_testbench:/input -v ~/polybox/bids_test_out:/output diff_qc /input /output participant
-
+'''sh
+		docker run -ti --rm \
+							 -v ~/polybox/bids_testbench:/input \
+							 -v ~/polybox/bids_test_out:/output \
+							 diff_qc \
+							 /input /output participant
+'''
 ### Description
 This is a placeholder for a short description explaining to the user what your App will doing.
 

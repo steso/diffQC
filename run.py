@@ -76,6 +76,11 @@ if args.analysis_level == "participant":
 
     # find all DWI files and run denoising and tensor / residual calculation
     for subject_label in subjects_to_analyze:
+        # create subj dir
+        subject_dir = os.path.join(args.output_dir, 'sub-' + subject_label)
+        if not os.path.isdir(subject_dir):
+            os.makedirs(subject_dir)
+
         for dwi_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
                                           "dwi", "*_dwi.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
 
@@ -94,11 +99,34 @@ if args.analysis_level == "participant":
             #     file.delTemporary(unring_output_path)
             #     file.delTemporary('input.json')
 
+            # Denoising to obtain noise-map
             out_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_denoised.")
             noise_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_noise.")
-            cmd = "dwidenoise %s %s -noise %s"%(dwi_file, os.path.join(args.output_dir, out_file), os.path.join(args.output_dir, noise_file))
-            print(cmd)
-            run.command(cmd)
+            cmd = "dwidenoise %s %s -noise %s -force"%(dwi_file,
+                                                       os.path.join(args.output_dir, subject_dir, out_file),
+                                                       os.path.join(args.output_dir, subject_dir, noise_file))
+            run(cmd)
+
+            # DTI Fit to get residuals
+            in_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_denoised.")
+            out_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_tensor.")
+            bvecs_file = dwi_file.replace("_dwi.nii.gz", "_dwi.bvec")
+            bvals_file = dwi_file.replace("_dwi.nii.gz", "_dwi.bval")
+            fit_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_dtFit.")
+
+            cmd = "dwi2tensor %s %s -fslgrad %s %s -predicted_signal %s -force"%(
+                                                       os.path.join(args.output_dir, subject_dir, in_file),
+                                                       os.path.join(args.output_dir, subject_dir, out_file),
+                                                       bvecs_file,
+                                                       bvals_file,
+                                                       os.path.join(args.output_dir, subject_dir, fit_file))
+            run(cmd)
+
+            # CSD residuals ?
+
+
+
+            # process & analyze outputs with python to generate all the plots
 
 # running group level
 elif args.analysis_level == "group":
