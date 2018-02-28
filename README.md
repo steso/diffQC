@@ -2,22 +2,22 @@
 
 ### Development
 User this command to build/rebuild docker container:
-'''sh
+```sh
 		docker build -t diff_qc diffQC/
-'''
-Run participant-level analysis with testbench bids-dataset:
-'''sh
+```
+Run participant-level analysis with e.g. testbench bids-dataset:
+```sh
 		docker run -ti --rm \
 							 -v ~/polybox/bids_testbench:/input \
 							 -v ~/polybox/bids_test_out:/output \
 							 diff_qc \
 							 /input /output participant
-'''
+```
 ### Description
-This is a placeholder for a short description explaining to the user what your App will doing.
+This BIDS-app performs quality estimations of MRI Diffusion datasets. It is still under development, please report any issues.
 
 ### Documentation
-Provide a link to the documention of your pipeline.
+So far we perform denoising (Veraart et al. 2016) and dwi2tensor in [MRtrix3](http://www.mrtrix.org).
 
 ### How to report errors
 Provide instructions for users on how to get help and report errors.
