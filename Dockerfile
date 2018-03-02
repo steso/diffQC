@@ -32,7 +32,15 @@ ENV PATH=:/mrtrix3/bin:$PATH
 ENV PYTHONPATH=/mrtrix3/lib
 
 # install more python libraries
-RUN apt-get install numpy, matplotlib, mpl_toolkits, sklearn
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip python3-scipy libfreetype6-dev libatlas-dev libatlas3gf-base libhdf5-dev
+
+RUN update-alternatives --set libblas.so.3 /usr/lib/atlas-base/atlas/libblas.so.3 && \
+    update-alternatives --set liblapack.so.3 /usr/lib/atlas-base/atlas/liblapack.so.3
+
+RUN pip3 install numpy scikit-learn matplotlib dipy && \
+    apt-get remove -y python3-pip && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY run.py /run.py
 

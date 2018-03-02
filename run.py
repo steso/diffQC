@@ -3,7 +3,7 @@ import argparse
 import os
 import subprocess
 import nibabel
-import numpy
+import numpy as np
 from glob import glob
 from mrtrix3 import app, file, fsl, image, path, run
 
@@ -99,7 +99,7 @@ if args.analysis_level == "participant":
             qval = bval*bvec
             iqval = -qval
 
-            fig = plt.figure(figsize=(20,10))
+            fig = plt.figure(figsize=(10,10))
 
             ax = fig.add_subplot(111, projection='3d')
 
@@ -117,10 +117,10 @@ if args.analysis_level == "participant":
             ax.set_zlim3d(-lim, lim)
 
             ax.set_aspect('equal', 'box')
-            ax.set_title('acquisition scheme ' + dataset)
+            ax.set_title('acquisition scheme ' + subject_label)
 
             plot_name = 'sampling_scheme.png'
-            savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
 
             # get nr of shells and directions
             ub = np.unique(bval)
@@ -132,6 +132,10 @@ if args.analysis_level == "participant":
             shells = shells[sortind]
             dirs_per_shell = dirs_per_shell[sortind]
 
+            print(shells)
+            print(dirs_per_shell)
+
+            dataset = {}
             dataset['shells'] = shells
             dataset['dirs_per_shell'] = dirs_per_shell
             dataset['resolution'] = img.header['pixdim'][1:4]
@@ -152,6 +156,7 @@ if args.analysis_level == "participant":
             cmd = "dwidenoise %s %s -noise %s -force"%(dwi_file,
                                                        os.path.join(args.output_dir, subject_dir, out_file),
                                                        os.path.join(args.output_dir, subject_dir, noise_file))
+            print(cmd)
             run(cmd)
 
             # DTI Fit to get residuals
@@ -185,4 +190,4 @@ elif args.analysis_level == "group":
             brain_sizes.append((data != 0).sum())
 
     with open(os.path.join(args.output_dir, "avg_brain_size.txt"), 'w') as fp:
-        fp.write("Average brain size is %g voxels"%numpy.array(brain_sizes).mean())
+        fp.write("Average brain size is %g voxels"%np.array(brain_sizes).mean())
