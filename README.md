@@ -3,7 +3,7 @@
 ### Development
 User this command to build/rebuild docker container:
 ```sh
-	docker build -t diff_qc diffQC/
+docker build -t diff_qc diffQC/ -m 4 GB
 ```
 Run participant-level analysis with e.g. testbench bids-dataset:
 ```sh

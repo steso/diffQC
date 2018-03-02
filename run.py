@@ -92,6 +92,7 @@ if args.analysis_level == "participant":
                                           "dwi", "*_dwi.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
 
             # Get DWI sampling scheme
+            img = nibabel.load(dwi_file)
             bval = np.loadtxt(dwi_file.replace("_dwi.nii.gz", "_dwi.bval"))
             bvec = np.loadtxt(dwi_file.replace("_dwi.nii.gz", "_dwi.bvec"))
 
@@ -133,6 +134,7 @@ if args.analysis_level == "participant":
 
             dataset['shells'] = shells
             dataset['dirs_per_shell'] = dirs_per_shell
+            dataset['resolution'] = img.header['pixdim'][1:4]
 
             #
             # # Step 2: Gibbs ringing removal (if available)
