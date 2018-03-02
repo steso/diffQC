@@ -31,6 +31,9 @@ RUN git clone https://github.com/MRtrix3/mrtrix3.git mrtrix3 && \
 ENV PATH=:/mrtrix3/bin:$PATH
 ENV PYTHONPATH=/mrtrix3/lib
 
+# install more python libraries
+RUN apt-get install numpy, matplotlib, mpl_toolkits, sklearn
+
 COPY run.py /run.py
 
 COPY version /version

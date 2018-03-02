@@ -7,6 +7,13 @@ import numpy
 from glob import glob
 from mrtrix3 import app, file, fsl, image, path, run
 
+import matplotlib.cm as cm
+import matplotlib.colors
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+import sklearn.cluster
+
 __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 'version')).read()
 
@@ -84,11 +91,49 @@ if args.analysis_level == "participant":
         for dwi_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
                                           "dwi", "*_dwi.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
 
-            # Step 1: Denoise
-            # run.command('dwidenoise ' + dwidenoise_input + ' dwi_denoised.' + ('nii' if unring_cmd else 'mif'))
-            # if unring_cmd:
-            #   run.command('mrinfo ' + dwidenoise_input + ' -json_keyval input.json')
-            # file.delTemporary(dwidenoise_input)
+            # Get DWI sampling scheme
+            bval = np.loadtxt(dwi_file.replace("_dwi.nii.gz", "_dwi.bval"))
+            bvec = np.loadtxt(dwi_file.replace("_dwi.nii.gz", "_dwi.bvec"))
+
+            qval = bval*bvec
+            iqval = -qval
+
+            fig = plt.figure(figsize=(20,10))
+
+            ax = fig.add_subplot(111, projection='3d')
+
+            norm = matplotlib.colors.Normalize(vmin=np.min(bval), vmax=np.max(bval), clip=True)
+            mapper = cm.ScalarMappable(norm=norm, cmap=cm.jet_r)
+            imapper = cm.ScalarMappable(norm=norm, cmap=cm.jet)
+
+            smp = ax.scatter(qval[0,:], qval[1,:], qval[2,:], c=mapper.to_rgba(bval), marker='o', s=70)
+            ismp = ax.scatter(iqval[0,:], iqval[1,:], iqval[2,:], c=imapper.to_rgba(bval), marker='^', s=70)
+
+            lim = np.ceil(np.max(np.abs(qval))/100)*100
+
+            ax.set_xlim3d(-lim, lim)
+            ax.set_ylim3d(-lim, lim)
+            ax.set_zlim3d(-lim, lim)
+
+            ax.set_aspect('equal', 'box')
+            ax.set_title('acquisition scheme ' + dataset)
+
+            plot_name = 'sampling_scheme.png'
+            savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+
+            # get nr of shells and directions
+            ub = np.unique(bval)
+            k = list(np.isclose(ub[1:],ub[:-1], rtol=0.15)).count(False) + 1
+            kmeans = sklearn.cluster.KMeans(n_clusters=k).fit(bval.reshape(-1,1))
+            shells = np.round(kmeans.cluster_centers_.ravel(), decimals=-1)
+            _, dirs_per_shell = np.unique(kmeans.labels_, return_counts=1)
+            sortind = np.argsort(shells)
+            shells = shells[sortind]
+            dirs_per_shell = dirs_per_shell[sortind]
+
+            dataset['shells'] = shells
+            dataset['dirs_per_shell'] = dirs_per_shell
+
             #
             # # Step 2: Gibbs ringing removal (if available)
             # if unring_cmd:

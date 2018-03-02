@@ -3,29 +3,39 @@
 ### Development
 User this command to build/rebuild docker container:
 ```sh
-		docker build -t diff_qc diffQC/
+	docker build -t diff_qc diffQC/
 ```
 Run participant-level analysis with e.g. testbench bids-dataset:
 ```sh
-		docker run -ti --rm \
-							 -v ~/polybox/bids_testbench:/input \
-							 -v ~/polybox/bids_test_out:/output \
-							 diff_qc \
-							 /input /output participant
+docker run -ti --rm \
+	-v ~/polybox/bids_testbench:/input \
+	-v ~/polybox/bids_test_out:/output \
+	diff_qc \
+	/input /output participant
 ```
 ### Description
 This BIDS-app performs quality estimations of MRI Diffusion datasets. It is still under development, please report any issues.
 
 ### Documentation
-So far we perform denoising (Veraart et al. 2016) and dwi2tensor in [MRtrix3](http://www.mrtrix.org).
+So far denoising and dwi2tensor is performed in [MRtrix3](http://www.mrtrix.org).
 
 ### How to report errors
 Provide instructions for users on how to get help and report errors.
 
 ### Acknowledgements
-Describe how would you would like users to acknowledge use of your App in their papers (citation, a paragraph that can be copy pasted, etc.)
+When using diffQC, please use cite the following work:
+
+denoising -> Veraart2016
+Gibbs ringing removal (Kellner et al., 2016)
+dwi2tensor -> Veraart 2014
+```
+Kellner, E.; Dhital, B.; Kiselev, V. G.; Reisert, M. Gibbs-ringing artifact removal based on local subvoxel-shifts. Magnetic Resonance in Medicine, 2006, 76(5), 1574-1581
+Veraart, J.; Sijbers, J.; Sunaert, S.; Leemans, A. & Jeurissen, B. Weighted linear least squares estimation of diffusion MRI parameters: strengths, limitations, and pitfalls. NeuroImage, 2013, 81, 335-346
+Veraart, J.; Fieremans, E. & Novikov, D.S. Diffusion MRI noise mapping using random matrix theory Magn. Res. Med., 2016, early view, doi:10.1002/mrm.26059
+```
 
 ### Usage
+The quality examination requires the data to be organzied according to the [BIDS specifications](http://bids.neuroimaging.io/).
 This App has the following command line arguments:
 
 		usage: run.py [-h]
