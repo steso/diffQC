@@ -129,8 +129,10 @@ if args.analysis_level == "participant":
             shells = np.round(kmeans.cluster_centers_.ravel(), decimals=-1)
             _, dirs_per_shell = np.unique(kmeans.labels_, return_counts=1)
             sortind = np.argsort(shells)
+            shellind = np.argsort(sortind)
             shells = shells[sortind]
             dirs_per_shell = dirs_per_shell[sortind]
+            shellind = shellind[kmeans.labels_]
 
             print(shells)
             print(dirs_per_shell)
@@ -140,7 +142,16 @@ if args.analysis_level == "participant":
             dataset['dirs_per_shell'] = dirs_per_shell
             dataset['resolution'] = img.header['pixdim'][1:4]
 
-            #
+            # Denoising to obtain noise-map
+            out_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_denoised.")
+            noise_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_noise.")
+            cmd = "dwidenoise %s %s -noise %s -force"%(dwi_file,
+                                                       os.path.join(args.output_dir, subject_dir, out_file),
+                                                       os.path.join(args.output_dir, subject_dir, noise_file))
+            print(cmd)
+            run(cmd)
+
+
             # # Step 2: Gibbs ringing removal (if available)
             # if unring_cmd:
             #     run.command(unring_cmd + ' dwi_denoised.nii dwi_unring' + fsl_suffix + ' -n 100')
@@ -150,14 +161,8 @@ if args.analysis_level == "participant":
             #     file.delTemporary(unring_output_path)
             #     file.delTemporary('input.json')
 
-            # Denoising to obtain noise-map
-            out_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_denoised.")
-            noise_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_noise.")
-            cmd = "dwidenoise %s %s -noise %s -force"%(dwi_file,
-                                                       os.path.join(args.output_dir, subject_dir, out_file),
-                                                       os.path.join(args.output_dir, subject_dir, noise_file))
-            print(cmd)
-            run(cmd)
+
+
 
             # DTI Fit to get residuals
             in_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_denoised.")
@@ -173,6 +178,31 @@ if args.analysis_level == "participant":
                                                        bvals_file,
                                                        os.path.join(args.output_dir, subject_dir, fit_file))
             run(cmd)
+
+
+            # Plot Intensity Values per shell
+            raw = img.get_data()
+            fig, ax = plt.subplots(nrows=shells.size, ncols=3, figsize=(15,3*shells.size))
+            plt.subplots_adjust(wspace=0.1, hspace=0.1)
+
+            ax[0][0].set_title('transversal')
+            ax[0][1].set_title('coronal')
+            ax[0][2].set_title('sagittal')
+
+            for i in range(shells.size):
+                ax[i][0].set(ylabel = 'b = ' + str(int(shells[i])))
+
+            for i in range(bval.shape[0]):
+                ax[shellind[i]][0].plot(np.mean(np.mean(raw[:,:,:,i],axis=0),axis=0))
+                ax[shellind[i]][1].plot(np.mean(np.mean(raw[:,:,:,i],axis=2),axis=0))
+                ax[shellind[i]][2].plot(np.mean(np.mean(raw[:,:,:,i],axis=1),axis=1))
+
+            for i in range(ax.shape[0]):
+                for j in range(ax.shape[1]):
+                    ax[i][j].axis('on')
+
+            plot_name = 'intensity_values.png'
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
 
             # CSD residuals ?
 
