@@ -94,6 +94,7 @@ def fixImageHeader(img):
     M = M[:,np.insert(perm,3,3)]
     flip_sign = np.sign(M[:3,:3].dot([1, 2, 3]))
 
+    dims = np.array(dims)[perm]
 
     R = M[:3,:3]
     T = M[:3,3]
