@@ -32,17 +32,23 @@ ENV PATH=:/mrtrix3/bin:$PATH
 ENV PYTHONPATH=/mrtrix3/lib
 
 # install more python libraries
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip python3-scipy libfreetype6-dev libatlas-dev libatlas3gf-base libhdf5-dev
 
-RUN update-alternatives --set libblas.so.3 /usr/lib/atlas-base/atlas/libblas.so.3 && \
-    update-alternatives --set liblapack.so.3 /usr/lib/atlas-base/atlas/liblapack.so.3
+# RUN apt-get update && \
+#     apt-get install -y python3 python3-pip python3-scipy libfreetype6-dev libatlas-dev libatlas3gf-base libhdf5-dev
 
-RUN pip3 install numpy scikit-learn matplotlib dipy && \
-    apt-get remove -y python3-pip && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# RUN update-alternatives --set libblas.so.3 /usr/lib/atlas-base/atlas/libblas.so.3 && \
+#     update-alternatives --set liblapack.so.3 /usr/lib/atlas-base/atlas/liblapack.so.3
+
+# RUN pip3 install numpy scikit-learn matplotlib dipy && \
+#     apt-get remove -y python3-pip && \
+#     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN apt-get install -y python3-pip libfreetype6-dev libpng12-dev python3-tk
+RUN pip3 install --upgrade pip
+RUN pip3 install matplotlib scipy scikit-learn dipy scikit-image
 
 COPY run.py /run.py
+COPY diffqc /diffqc/
 
 COPY version /version
 

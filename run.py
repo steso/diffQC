@@ -2,18 +2,27 @@
 import argparse
 import os
 import subprocess
-import nibabel
+import nibabel as nib
 import numpy as np
 from glob import glob
 from mrtrix3 import app, file, fsl, image, path, run
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.cm as cm
 import matplotlib.colors
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 import sklearn.cluster
+from skimage import feature
 
+from dipy.viz import regtools
+from dipy.align.imaffine import AffineMap
+from dipy.segment.mask import median_otsu
+
+from diffqc import helper
 __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 'version')).read()
 
@@ -92,7 +101,7 @@ if args.analysis_level == "participant":
                                           "dwi", "*_dwi.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
 
             # Get DWI sampling scheme
-            img = nibabel.load(dwi_file)
+            img = nib.load(dwi_file)
             bval = np.loadtxt(dwi_file.replace("_dwi.nii.gz", "_dwi.bval"))
             bvec = np.loadtxt(dwi_file.replace("_dwi.nii.gz", "_dwi.bvec"))
 
@@ -151,6 +160,7 @@ if args.analysis_level == "participant":
             print(cmd)
             run(cmd)
 
+            img = nib.load(os.path.join(args.output_dir, subject_dir, out_file))
 
             # # Step 2: Gibbs ringing removal (if available)
             # if unring_cmd:
@@ -179,9 +189,61 @@ if args.analysis_level == "participant":
                                                        os.path.join(args.output_dir, subject_dir, fit_file))
             run(cmd)
 
+            # Calc DTI residuals
+            raw = img.get_data()
+            img_tensor = nib.load(os.path.join(args.output_dir, subject_dir, fit_file))
+            res = np.sqrt((raw-img_tensor.get_data())**2)
+            b0 = raw[:,:,:,shellind==0]
+            if b0.shape[3] > 0:
+                b0 = np.mean(b0, axis=3)
+
+            res[:,:,:,bval<=50] = 0
+            res[:,:,:,np.bitwise_and(bval>50, sum(bvec)==0)] = 0
+
+            min_thresh = np.min(b0)
+            max_thresh = np.max(b0)
+            med_thresh = np.median(b0[b0>0])
+
+            _, b0_mask = median_otsu(b0,2,1)
+
+            mask = np.repeat(np.expand_dims(np.invert(b0_mask), axis=3), raw.shape[3], axis=3)
+
+            res[mask] = 0
+
+            res[np.isnan(res)] = 0
+            res[np.isinf(res)] = 0
+
+            res[res<min_thresh] = 0
+            res[res>max_thresh] = 0
+
+            res[mask]=0
+
+            # Plot tensor residuals
+            res = helper.normImg(res)
+
+            sl_res = np.sum(np.sum(res, axis=0), axis=0)
+            sl_res.shape
+
+            z, diff = np.unravel_index(np.argsort(sl_res, axis=None)[-9:],sl_res.shape)
+
+            fig = plt.figure(figsize=(20,20))
+            grid = ImageGrid(fig,111,nrows_ncols=(3,3), axes_pad=0)
+
+            plt.subplots_adjust(wspace=0, hspace=0)
+            cnt=0
+            for i in range(3):
+                for j in range(3):
+                    pltimg = raw[:,::-1,z[cnt],diff[cnt]].T
+                    grid[cnt].imshow(pltimg, cm.gray, interpolation='none')
+                    grid[cnt].axis('off')
+                    cnt = cnt + 1
+
+            grid[1].set_title('outlier slices according to tensor residuals', fontsize=16)
+
+            plot_name = 'tensor_residuals.png'
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
 
             # Plot Intensity Values per shell
-            raw = img.get_data()
             fig, ax = plt.subplots(nrows=shells.size, ncols=3, figsize=(15,3*shells.size))
             plt.subplots_adjust(wspace=0.1, hspace=0.1)
 
@@ -207,17 +269,74 @@ if args.analysis_level == "participant":
             # CSD residuals ?
 
 
+            # check DWI -> T1 overlay
+            for t1_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
+                                              "anat", "*_T1w.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
+                if (t1_file):
+                    imgT1 = nib.load(t1_file)
+                    #raw = img.get_data()
+                    b0 = raw[:,:,:,shellind==0]
+                    if b0.shape[3] > 0:
+                        b0 = np.mean(b0, axis=3)
+                    b0_affine = img.affine
 
+                    t1 = imgT1.get_data()
+                    t1_affine = imgT1.affine
+
+                    (t1, t1_affine) = helper.fixImageHeader(imgT1)
+
+                    affine_map = AffineMap(np.eye(4),
+                                           t1.shape, t1_affine,
+                                           b0.shape, b0_affine)
+
+                    resampled = affine_map.transform(np.array(b0))
+
+                    # Normalize the input images to [0,255]
+                    t1 = helper.normImg(t1)
+                    b0 = helper.normImg(resampled)
+
+                    overlay = np.zeros(shape=(t1.shape) + (3,), dtype=np.uint8)
+                    b0_canny = np.zeros(shape=(t1.shape), dtype=np.bool)
+
+                    ind = helper.getImgThirds(t1)
+
+                    for i in ind[0]:
+                        b0_canny[:,:,i] = feature.canny(b0[:,:,i], sigma=1.5)
+
+                    for i in ind[1]:
+                        b0_canny[:,i,:] = feature.canny(np.squeeze(b0[:,i,:]), sigma=1.5)
+
+                    for i in ind[2]:
+                        #b0_canny[i-1,:,:] = feature.canny(np.squeeze(b0[i-1,:,:]), sigma=1.5)
+                        b0_canny[i,:,:] = feature.canny(np.squeeze(b0[i,:,:]), sigma=1.5)
+                        #b0_canny[i+1,:,:] = feature.canny(np.squeeze(b0[i+1,:,:]), sigma=1.5)
+
+                    overlay[..., 0] = t1
+                    overlay[..., 1] = t1
+                    overlay[..., 2] = t1
+                    overlay[..., 0] = b0_canny*255
+
+                    helper.plotFig(overlay, 'alignment DWI -> T1')
+                    plot_name = 't1_overlay.png'
+                    plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
             # process & analyze outputs with python to generate all the plots
 
 # running group level
 elif args.analysis_level == "group":
-    brain_sizes = []
-    for subject_label in subjects_to_analyze:
-        for brain_file in glob(os.path.join(args.output_dir, "sub-%s*.nii*"%subject_label)):
-            data = nibabel.load(brain_file).get_data()
-            # calcualte average mask size in voxels
-            brain_sizes.append((data != 0).sum())
+    #brain_sizes = []
 
-    with open(os.path.join(args.output_dir, "avg_brain_size.txt"), 'w') as fp:
-        fp.write("Average brain size is %g voxels"%np.array(brain_sizes).mean())
+    with open(os.path.join(args.output_dir, "_quality.html"), 'w') as fp:
+        fp.write("<html>\n\t<body bgcolor=#FFF text=#000 style=\"font-family: Arial, Tahoma\">\n\n")
+        fp.write("<h3>Quality</h3>\n\n\t\t<table>\n")
+        # loop over subjects
+        for subject_label in subjects_to_analyze:
+            fp.write("\t\t\t<tr><td colspan=" + str(4) + " bgcolor=#CCC><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
+            # loop over images
+            for image_file in glob(os.path.join(args.output_dir, "sub-%s"%subject_label, "*.png")):
+                # calcualte average mask size in voxels
+                fp.write("\t\t\t\t<td><image src=\"" + image_file.replace(args.output_dir + os.sep, "") + "\" width=\"100%\"></td>\n")
+
+        fp.write("\t\t</table>\n\t</body>\n</html>")
+
+    #with open(os.path.join(args.output_dir, "avg_brain_size.txt"), 'w') as fp:
+    #    fp.write("Average brain size is %g voxels"%np.array(brain_sizes).mean())
