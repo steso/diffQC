@@ -129,7 +129,7 @@ if args.analysis_level == "participant":
             ax.set_title('acquisition scheme ' + subject_label)
 
             plot_name = 'sampling_scheme.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
 
             # get nr of shells and directions
             ub = np.unique(bval)
@@ -159,6 +159,14 @@ if args.analysis_level == "participant":
                                                        os.path.join(args.output_dir, subject_dir, noise_file))
             print(cmd)
             run(cmd)
+
+            noise = nib.load(os.path.join(args.output_dir, subject_dir, noise_file))
+            noiseMap = noise.get_data()
+            noiseMap[np.isnan(noiseMap)] = 0
+            helper.plotFig(noiseMap, 'Noise Map')
+
+            plot_name = 'noise_map.png'
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
 
             img = nib.load(os.path.join(args.output_dir, subject_dir, out_file))
 
@@ -214,12 +222,17 @@ if args.analysis_level == "participant":
             helper.plotFig(faMap, 'Fractional Anisotropy')
 
             plot_name = 'fractional_anisotropy.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
 
             # Calc DTI residuals
             raw = img.get_data()
             img_tensor = nib.load(os.path.join(args.output_dir, subject_dir, fit_file))
-            res = np.sqrt((raw-img_tensor.get_data())**2)
+            tensor_estimator = img_tensor.get_data()
+            raw[np.isnan(raw)] = 0
+            raw[np.isinf(raw)] = 0
+            tensor_estimator[np.isnan(tensor_estimator)] = 0
+            tensor_estimator[np.isinf(tensor_estimator)] = 0
+            res = np.sqrt((raw - tensor_estimator)**2)
             b0 = raw[:,:,:,shellind==0]
             if b0.shape[3] > 0:
                 b0 = np.mean(b0, axis=3)
@@ -268,7 +281,7 @@ if args.analysis_level == "participant":
             grid[1].set_title('outlier slices according to tensor residuals', fontsize=16)
 
             plot_name = 'tensor_residuals.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
 
             # Plot Intensity Values per shell
             fig, ax = plt.subplots(nrows=shells.size, ncols=3, figsize=(15,3*shells.size))
@@ -291,7 +304,7 @@ if args.analysis_level == "participant":
                     ax[i][j].axis('on')
 
             plot_name = 'intensity_values.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
 
             # CSD residuals ?
 
@@ -349,7 +362,7 @@ if args.analysis_level == "participant":
 
                     helper.plotFig(overlay, 'alignment DWI -> T1')
                     plot_name = 't1_overlay.png'
-                    plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+                    plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
             # process & analyze outputs with python to generate all the plots
 
 # running group level
@@ -373,21 +386,25 @@ elif args.analysis_level == "group":
         fp.write("\t\t\tfor (var i=0; i<classDivs.length; i++) {\n\t\t\t\tdiv = classDivs[i];\n")
         fp.write("\t\t\t\tif (div.style.display === \"none\") {\n\t\t\t\t\tdiv.style.display = \"block\";\n\t\t\t\t} else {\n\t\t\t\t\tdiv.style.display = \"none\";\n\t\t\t\t}\n")
         fp.write("\t\t\t}\n\t\t}\n\t</script>\n\n")
-        fp.write("\t<h3>Quality</h3>\n")
-        fp.write("\t<form>\n")
+        fp.write("\t<div id=\"menu\" style=\"width: 200px; top: 30px; z-index: 999; position: fixed; border: 1px solid gray; border-radius: 7px; padding: 10px; background-color: #EEE;\">\n")
+        fp.write("\t\t<font size=5>Quality</font><p>\n")
+        fp.write("\t\t<form>\n")
         for item in maxList:
-            fp.write("\t\t<input type=\"checkbox\" onclick=\"toggle('" + str(item) + "')\" checked>" + str(item).replace('_',' ') + "</input><br>\n")
-        fp.write("\t</form>\n<p>\n\n\t\t<table>\n")
+            fp.write("\t\t\t<input type=\"checkbox\" onclick=\"toggle('" + str(item) + "')\" checked>" + str(item).replace('_',' ') + "</input><br>\n")
+        fp.write("\t\t</form>\n<p>\n\n")
+        fp.write("\t\t<div style=\"margin-left: 10px; float: right; padding: 3px; background-color: #CCC; border: 1px solid gray; border-radius: 7px;\" onclick=\"javascript: document.body.scrollTop = 0; document.documentElement.scrollTop = 0;\"><font size=2>scroll to top</font></div>\n")
+        fp.write("\t</div>\n\n\t<div id=\"content\" style=\"margin-left: 230px; position: absolute; top: 10px; padding: 3px; border: 1px solid gray; border-radius: 7px; background-color: #FFF;\">\n")
+        fp.write("\t\t<table>\n")
 
         # loop over subjects
         for subject_label in subjects_to_analyze:
-            fp.write("\t\t\t<tr><td colspan=" + str(maxImg) + " bgcolor=#CCC><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
+            fp.write("\t\t\t<tr><td colspan=" + str(maxImg) + " bgcolor=#EEE><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
             # loop over images
             for image_file in glob(os.path.join(args.output_dir, "sub-%s"%subject_label, "*.png")):
                 # calcualte average mask size in voxels
                 fp.write("\t\t\t\t<td><div name=\"" + subject_label + "\" class=\"" + os.path.basename(image_file)[0:-4] + "\"><image src=\"" + image_file.replace(args.output_dir + os.sep, "") + "\" width=\"100%\"></div></td>\n")
 
-        fp.write("\t\t</table>\n\t</body>\n</html>")
+        fp.write("\t\t</table>\n\t</div>\t</body>\n</html>")
 
     #with open(os.path.join(args.output_dir, "avg_brain_size.txt"), 'w') as fp:
     #    fp.write("Average brain size is %g voxels"%np.array(brain_sizes).mean())
