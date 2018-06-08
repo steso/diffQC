@@ -189,6 +189,33 @@ if args.analysis_level == "participant":
                                                        os.path.join(args.output_dir, subject_dir, fit_file))
             run(cmd)
 
+            # Create FA maps
+            in_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_tensor.")
+            out_file = os.path.split(dwi_file)[-1].replace("_dwi.", "_fa.")
+            cmd = "tensor2metric %s -fa %s -force" % (
+                                                os.path.join(args.output_dir, subject_dir, in_file),
+                                                os.path.join(args.output_dir, subject_dir, out_file))
+            run(cmd)
+
+            fa = nib.load(os.path.join(args.output_dir, subject_dir, out_file))
+
+            raw = img.get_data()
+            b0 = raw[:,:,:,shellind==0]
+
+            if b0.shape[3] > 0:
+                b0 = np.mean(b0, axis=3)
+
+            _, b0_mask = median_otsu(b0,2,1)
+
+            faMap = fa.get_data()
+            faMap[np.isnan(faMap)] = 0
+            faMap = faMap * b0_mask
+
+            helper.plotFig(faMap, 'Fractional Anisotropy')
+
+            plot_name = 'fractional_anisotropy.png'
+            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name))
+
             # Calc DTI residuals
             raw = img.get_data()
             img_tensor = nib.load(os.path.join(args.output_dir, subject_dir, fit_file))
@@ -275,11 +302,15 @@ if args.analysis_level == "participant":
                 if (t1_file):
                     imgT1 = nib.load(t1_file)
                     #raw = img.get_data()
+                    b0_affine = img.affine
                     b0 = raw[:,:,:,shellind==0]
+
                     if b0.shape[3] > 0:
                         b0 = np.mean(b0, axis=3)
-                    b0_affine = img.affine
 
+                    _, b0_mask = median_otsu(b0,2,1)
+
+                    b0 = b0 * b0_mask
                     t1 = imgT1.get_data()
                     t1_affine = imgT1.affine
 
@@ -324,17 +355,37 @@ if args.analysis_level == "participant":
 # running group level
 elif args.analysis_level == "group":
     #brain_sizes = []
+    maxImg = 0
+    maxList = []
+    for subject_label in subjects_to_analyze:
+        imgCnt = 0
+        myList = []
+        for image_file in glob(os.path.join(args.output_dir, "sub-%s"%subject_label, "*.png")):
+            imgCnt = imgCnt + 1
+            myList.extend([os.path.basename(image_file)[0:-4]])
+            if maxImg < imgCnt:
+                maxImg = imgCnt
+                maxList = myList
 
     with open(os.path.join(args.output_dir, "_quality.html"), 'w') as fp:
         fp.write("<html>\n\t<body bgcolor=#FFF text=#000 style=\"font-family: Arial, Tahoma\">\n\n")
-        fp.write("<h3>Quality</h3>\n\n\t\t<table>\n")
+        fp.write("\t<script language=\"JavaScript\">\n\t\tfunction toggle(divClass) {\n\t\t\tclassDivs = document.getElementsByClassName(divClass);\n")
+        fp.write("\t\t\tfor (var i=0; i<classDivs.length; i++) {\n\t\t\t\tdiv = classDivs[i];\n")
+        fp.write("\t\t\t\tif (div.style.display === \"none\") {\n\t\t\t\t\tdiv.style.display = \"block\";\n\t\t\t\t} else {\n\t\t\t\t\tdiv.style.display = \"none\";\n\t\t\t\t}\n")
+        fp.write("\t\t\t}\n\t\t}\n\t</script>\n\n")
+        fp.write("\t<h3>Quality</h3>\n")
+        fp.write("\t<form>\n")
+        for item in maxList:
+            fp.write("\t\t<input type=\"checkbox\" onclick=\"toggle('" + str(item) + "')\" checked>" + str(item).replace('_',' ') + "</input><br>\n")
+        fp.write("\t</form>\n<p>\n\n\t\t<table>\n")
+
         # loop over subjects
         for subject_label in subjects_to_analyze:
-            fp.write("\t\t\t<tr><td colspan=" + str(4) + " bgcolor=#CCC><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
+            fp.write("\t\t\t<tr><td colspan=" + str(maxImg) + " bgcolor=#CCC><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
             # loop over images
             for image_file in glob(os.path.join(args.output_dir, "sub-%s"%subject_label, "*.png")):
                 # calcualte average mask size in voxels
-                fp.write("\t\t\t\t<td><image src=\"" + image_file.replace(args.output_dir + os.sep, "") + "\" width=\"100%\"></td>\n")
+                fp.write("\t\t\t\t<td><div name=\"" + subject_label + "\" class=\"" + os.path.basename(image_file)[0:-4] + "\"><image src=\"" + image_file.replace(args.output_dir + os.sep, "") + "\" width=\"100%\"></div></td>\n")
 
         fp.write("\t\t</table>\n\t</body>\n</html>")
 
