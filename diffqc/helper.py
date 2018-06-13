@@ -1,11 +1,29 @@
 import os.path
+import subprocess
 import numpy as np
 import nibabel as nib
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.cm as cm
 import matplotlib.colors
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axes_grid1 import ImageGrid
+
+def run(command, env={}):
+    merged_env = os.environ
+    merged_env.update(env)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, shell=True,
+                               env=merged_env)
+    while True:
+        line = process.stdout.readline()
+        line = str(line, 'utf-8')[:-1]
+        print(line)
+        if line == '' and process.poll() != None:
+            break
+    if process.returncode != 0:
+        raise Exception("Non zero return code: %d"%process.returncode)
 
 def getImgThirds(img):
     indx = np.floor(np.linspace(img.shape[2]/3, img.shape[2]-img.shape[2]/3,3)).astype(int)

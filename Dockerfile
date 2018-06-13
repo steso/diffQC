@@ -22,7 +22,7 @@ RUN apt-get install -y libeigen3-dev zlib1g-dev
 ENV CXX=/usr/bin/g++-5
 
 RUN git clone https://github.com/MRtrix3/mrtrix3.git mrtrix3 && \
-    cd mrtrix3 && git checkout 54faeb61 && \
+    cd mrtrix3 && git checkout 57e351e && \
     python configure -nogui && \
     NUMBER_OF_PROCESSORS=1 python build && \
     git describe --tags > /mrtrix3_version
