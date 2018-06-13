@@ -93,9 +93,12 @@ if args.analysis_level == "participant":
     # find all DWI files and run denoising and tensor / residual calculation
     for subject_label in subjects_to_analyze:
         # create subj dir
-        subject_dir = os.path.join(args.output_dir, 'sub-' + subject_label)
+        subject_dir = os.path.join(args.output_dir, 'qc_data', 'sub-' + subject_label)
+        fig_dir = os.path.join(args.output_dir, 'qc_figures', 'sub-' + subject_label)
         if not os.path.isdir(subject_dir):
             os.makedirs(subject_dir)
+        if not os.path.isdir(fig_dir):
+            os.makedirs(fig_dir)
 
         for dwi_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
                                           "dwi", "*_dwi.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
@@ -129,7 +132,8 @@ if args.analysis_level == "participant":
             ax.set_title('acquisition scheme ' + subject_label)
 
             plot_name = 'sampling_scheme.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
+            plt.savefig(os.path.join(args.output_dir, fig_dir, plot_name), bbox_inches='tight')
+            plt.close()
 
             # get nr of shells and directions
             ub = np.unique(bval)
@@ -166,7 +170,8 @@ if args.analysis_level == "participant":
             helper.plotFig(noiseMap, 'Noise Map')
 
             plot_name = 'noise_map.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
+            plt.savefig(os.path.join(args.output_dir, fig_dir, plot_name), bbox_inches='tight')
+            plt.close()
 
             img = nib.load(os.path.join(args.output_dir, subject_dir, out_file))
 
@@ -222,7 +227,8 @@ if args.analysis_level == "participant":
             helper.plotFig(faMap, 'Fractional Anisotropy')
 
             plot_name = 'fractional_anisotropy.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
+            plt.savefig(os.path.join(args.output_dir, fig_dir, plot_name), bbox_inches='tight')
+            plt.close()
 
             # Calc DTI residuals
             raw = img.get_data()
@@ -232,7 +238,7 @@ if args.analysis_level == "participant":
             raw[np.isinf(raw)] = 0
             tensor_estimator[np.isnan(tensor_estimator)] = 0
             tensor_estimator[np.isinf(tensor_estimator)] = 0
-            res = np.sqrt((raw - tensor_estimator)**2)
+            res = np.sqrt((raw.astype(float) - tensor_estimator.astype(float))**2)
             b0 = raw[:,:,:,shellind==0]
             if b0.shape[3] > 0:
                 b0 = np.mean(b0, axis=3)
@@ -281,7 +287,8 @@ if args.analysis_level == "participant":
             grid[1].set_title('outlier slices according to tensor residuals', fontsize=16)
 
             plot_name = 'tensor_residuals.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
+            plt.savefig(os.path.join(args.output_dir, fig_dir, plot_name), bbox_inches='tight')
+            plt.close()
 
             # Plot Intensity Values per shell
             fig, ax = plt.subplots(nrows=shells.size, ncols=3, figsize=(15,3*shells.size))
@@ -304,7 +311,8 @@ if args.analysis_level == "participant":
                     ax[i][j].axis('on')
 
             plot_name = 'intensity_values.png'
-            plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
+            plt.savefig(os.path.join(args.output_dir, fig_dir, plot_name), bbox_inches='tight')
+            plt.close()
 
             # CSD residuals ?
 
@@ -362,18 +370,20 @@ if args.analysis_level == "participant":
 
                     helper.plotFig(overlay, 'alignment DWI -> T1')
                     plot_name = 't1_overlay.png'
-                    plt.savefig(os.path.join(args.output_dir, subject_dir, plot_name), bbox_inches='tight')
+                    plt.savefig(os.path.join(args.output_dir, fig_dir, plot_name), bbox_inches='tight')
+                    plt.close()
             # process & analyze outputs with python to generate all the plots
 
 # running group level
 elif args.analysis_level == "group":
-    #brain_sizes = []
+
     maxImg = 0
     maxList = []
+
     for subject_label in subjects_to_analyze:
         imgCnt = 0
         myList = []
-        for image_file in glob(os.path.join(args.output_dir, "sub-%s"%subject_label, "*.png")):
+        for image_file in glob(os.path.join(args.output_dir, 'qc_figures', "sub-%s"%subject_label, "*.png")):
             imgCnt = imgCnt + 1
             myList.extend([os.path.basename(image_file)[0:-4]])
             if maxImg < imgCnt:
@@ -400,7 +410,7 @@ elif args.analysis_level == "group":
         for subject_label in subjects_to_analyze:
             fp.write("\t\t\t<tr><td colspan=" + str(maxImg) + " bgcolor=#EEE><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
             # loop over images
-            for image_file in glob(os.path.join(args.output_dir, "sub-%s"%subject_label, "*.png")):
+            for image_file in glob(os.path.join(args.output_dir, 'qc_figures', "sub-%s"%subject_label, "*.png")):
                 # calcualte average mask size in voxels
                 fp.write("\t\t\t\t<td><div name=\"" + subject_label + "\" class=\"" + os.path.basename(image_file)[0:-4] + "\"><image src=\"" + image_file.replace(args.output_dir + os.sep, "") + "\" width=\"100%\"></div></td>\n")
 
