@@ -102,33 +102,28 @@ if args.analysis_level == "participant":
             # MultiShell Datasets: perform tensor fit, residuals and fa per shell
             if numShells < 10 and numShells > 1:
                 # backup MultiShell Files in Config
-                origDWI = dwi['denoised']
-                origBval = dwi['bval']
-                origBvec = dwi['bvec']
-                origShells = dwi['shells']
-                origDirsPerShell = dwi['dirs_per_shell']
-                origShellInd = dwi['shellind']
+                origDWI = dwi.copy()
 
                 for i in range(numShells):
                     bShell = bShells[i]
                     dwi['shellStr'] = "_b" + str(int(bShell))
-                    dwi['denoised'] = origDWI.replace('_denoised', '_denoised' + dwi['shellStr'])
+                    dwi['denoised'] = origDWI['denoised'].replace('_denoised', '_denoised' + dwi['shellStr'])
                     dwi['bval'] = dwi['denoised'].replace('.nii.gz', '.bval')
                     dwi['bvec'] = dwi['denoised'].replace('.nii.gz', '.bvec')
 
                     # extract shell from _denoise
                     cmd = "dwiextract -shells 0,%s -fslgrad %s %s -export_grad_fsl %s %s %s %s -force"%(str(int(bShell)),
-                                                               origBvec,
-                                                               origBval,
+                                                               origDWI['bvec'],
+                                                               origDWI['bval'],
                                                                dwi['bvec'],
                                                                dwi['bval'],
-                                                               origDWI,
+                                                               origDWI['denoised'],
                                                                dwi['denoised'])
                     # print(cmd)
                     helper.run(cmd)
 
                     participant.getShells(dwi)
-                    dwi['shells'] = origShells
+
                     # perform tensor fit, faMap and Residuals
                     participant.dtiFit(dwi)
                     participant.faMap(dwi)
@@ -136,13 +131,9 @@ if args.analysis_level == "participant":
 
 
                 # restore MultiShell Files in Config
-                dwi['denoised'] = origDWI
-                dwi['bval'] = origBval
-                dwi['bvec'] = origBvec
-                dwi['shells'] = origShells
-                dwi['dirs_per_shell'] = origDirsPerShell
-                dwi['shellind'] = origShellInd
+                dwi = origDWI.copy()
             else:
+                dwi['shellStr'] = ''
                 # perform tensor fit
                 participant.dtiFit(dwi)
 
@@ -165,24 +156,19 @@ if args.analysis_level == "participant":
 elif args.analysis_level == "group":
 
     # get figure names and number of figures per subject
-    maxImg = 0
-    maxList = []
+    myList = []
 
     for subject_label in subjects_to_analyze:
-        imgCnt = 0
-        myList = []
         for image_file in glob(os.path.join(args.output_dir, 'qc_figures', "sub-%s"%subject_label, "*.png")):
-            imgCnt = imgCnt + 1
             myList.extend([os.path.basename(image_file)[0:-4]])
-            if maxImg < imgCnt:
-                maxImg = imgCnt
-                maxList = myList
+
+    imgSet = set(myList)
 
     wp = {}
     wp['filePath'] = os.path.join(args.output_dir, "_quality.html")
     wp['subjects'] = subjects_to_analyze
     wp['figFolder'] = os.path.join(args.output_dir, 'qc_figures')
-    wp['maxImg'] = maxImg
-    wp['maxList'] = maxList
+    wp['maxImg'] = len(imgSet)
+    wp['maxList'] = list(sorted(imgSet))
 
     group.createWebPage(wp)

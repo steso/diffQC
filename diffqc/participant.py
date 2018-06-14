@@ -62,7 +62,7 @@ def getShells(dwi):
     shells = shells[sortind]
     dirs_per_shell = dirs_per_shell[sortind]
     shellind = shellind[kmeans.labels_]
-
+    shells[shells<50] = 0
     dwi['shells'] = shells
     dwi['dirs_per_shell'] = dirs_per_shell
     dwi['shellind'] = shellind
@@ -106,12 +106,6 @@ def brainMask(dwi):
 
 def dtiFit(dwi):
 
-    numShells = sum(dwi['shells']>50)
-    if numShells > 1 and numShells <10:
-        shellStr = dwi['shellStr']
-    else:
-        shellStr = ''
-
     # DTI Fit to get residuals
     in_file = dwi['denoised']
     dwi['tensor'] = dwi['denoised'].replace("_denoised", "_tensor")
@@ -129,14 +123,8 @@ def dtiFit(dwi):
 
 def faMap(dwi):
 
-    numShells = sum(dwi['shells']>50)
-    if numShells > 1 and numShells <10:
-        shellStr = dwi['shellStr']
-    else:
-        shellStr = ''
-
     fa_file = os.path.join(dwi['data_dir'],
-                os.path.split(dwi['file'])[-1].replace("_dwi.", "_fa" + shellStr + "."))
+                os.path.split(dwi['file'])[-1].replace("_dwi.", "_fa" + dwi['shellStr'] + "."))
     cmd = "tensor2metric %s -fa %s -force" % (
                                         dwi['tensor'],
                                         fa_file)
@@ -153,18 +141,11 @@ def faMap(dwi):
 
     helper.plotFig(faMap, 'Fractional Anisotropy')
 
-    plot_name = 'fractional_anisotropy' + shellStr + '.png'
+    plot_name = 'fractional_anisotropy' + dwi['shellStr'] + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
 def tensorResiduals(dwi):
-
-    numShells = sum(dwi['shells']>50)
-    if numShells > 1 and numShells <10:
-        shellStr = dwi['shellStr']
-    else:
-        shellStr = ''
-
     bval = np.loadtxt(dwi['bval'])
     bvec = np.loadtxt(dwi['bvec'])
     img = nib.load(dwi['denoised'])
@@ -223,7 +204,7 @@ def tensorResiduals(dwi):
     shells = np.unique(dwi['shellind'])
     grid[1].set_title('outlier slices according to tensor residuals', fontsize=16)
 
-    plot_name = 'tensor_residuals' + shellStr + '.png'
+    plot_name = 'tensor_residuals' + dwi['shellStr'] + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
@@ -235,8 +216,8 @@ def tensorResiduals(dwi):
     ax[0][1].set_title('coronal')
     ax[0][2].set_title('sagittal')
 
-    for i in range(shells.size):
-        ax[i][0].set(ylabel = 'b = ' + str(int(shells[i])))
+    for i in range(dwi['shells'].size):
+        ax[i][0].set(ylabel = 'b = ' + str(int(dwi['shells'][i])))
 
     for i in range(bval.shape[0]):
         ax[dwi['shellind'][i]][0].plot(np.mean(np.mean(raw[:,:,:,i],axis=0),axis=0))
@@ -247,7 +228,7 @@ def tensorResiduals(dwi):
         for j in range(ax.shape[1]):
             ax[i][j].axis('on')
 
-    plot_name = 'intensity_values' + shellStr + '.png'
+    plot_name = 'intensity_values' + dwi['shellStr'] + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
