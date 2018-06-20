@@ -124,10 +124,13 @@ def dtiFit(dwi):
 def faMap(dwi):
 
     fa_file = os.path.join(dwi['data_dir'],
-                os.path.split(dwi['file'])[-1].replace("_dwi.", "_fa" + dwi['shellStr'] + "."))
-    cmd = "tensor2metric %s -fa %s -force" % (
+                os.path.split(dwi['file'])[-1].replace("_dwi.", "_fa" + "."))
+    ev1_file = os.path.join(dwi['data_dir'],
+                os.path.split(dwi['file'])[-1].replace("_dwi.", "_ev1" + "."))
+    cmd = "tensor2metric %s -fa %s -vector %s -num 1 -force" % (
                                         dwi['tensor'],
-                                        fa_file)
+                                        fa_file,
+                                        ev1_file)
 
     # print(cmd)
     helper.run(cmd)
@@ -139,9 +142,19 @@ def faMap(dwi):
     faMap[np.isnan(faMap)] = 0
     faMap = faMap * dwi['mask']
 
-    helper.plotFig(faMap, 'Fractional Anisotropy')
+    helper.plotFig(faMap, 'fractional anisotropy')
 
-    plot_name = 'fractional_anisotropy' + dwi['shellStr'] + '.png'
+    plot_name = 'fractional_anisotropy' + '.png'
+    plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
+    plt.close()
+
+    ev = nib.load(ev1_file)
+    ev = ev.get_data()
+    ev[np.isnan(ev)] = 0
+
+    helper.plotTensor(faMap, ev, 'tensor eigenvector')
+
+    plot_name = 'tensor_eigenvector' + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
@@ -204,7 +217,7 @@ def tensorResiduals(dwi):
     shells = np.unique(dwi['shellind'])
     grid[1].set_title('outlier slices according to tensor residuals', fontsize=16)
 
-    plot_name = 'tensor_residuals' + dwi['shellStr'] + '.png'
+    plot_name = 'tensor_residuals' + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
@@ -228,7 +241,7 @@ def tensorResiduals(dwi):
         for j in range(ax.shape[1]):
             ax[i][j].axis('on')
 
-    plot_name = 'intensity_values' + dwi['shellStr'] + '.png'
+    plot_name = 'intensity_values' + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 

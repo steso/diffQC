@@ -51,13 +51,9 @@ if args.analysis_level == "participant":
     # find all DWI files and run denoising and tensor / residual calculation
     for subject_label in subjects_to_analyze:
 
-        # create subj dir in qc_data & qc_figures folders
-        subject_dir = os.path.join(args.output_dir, 'qc_data', 'sub-' + subject_label)
-        fig_dir = os.path.join(args.output_dir, 'qc_figures', 'sub-' + subject_label)
-        if not os.path.isdir(subject_dir):
-            os.makedirs(subject_dir)
-        if not os.path.isdir(fig_dir):
-            os.makedirs(fig_dir)
+
+
+
 
         print("processing sub-" + subject_label + "\n")
 
@@ -65,6 +61,28 @@ if args.analysis_level == "participant":
         for dwi_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
                                           "dwi", "*_dwi.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
 
+            # create subj dir in qc_data & qc_figures folders
+            subject_dir = os.path.join(args.output_dir, 'qc_data', 'sub-' + subject_label)
+            fig_dir = os.path.join(args.output_dir, 'qc_figures', 'sub-' + subject_label)
+
+            # check session
+            if dwi_file.split("ses-")[-1] != dwi_file:
+                ses = 'ses-' + dwi_file.split("ses-")[-1].split("_")[0]
+                subject_dir = subject_dir + '_' + ses
+                fig_dir = fig_dir + '_' + ses
+            # check acquisition
+            if dwi_file.split("acq-")[-1] != dwi_file:
+                acq = 'acq-' + dwi_file.split("acq-")[-1].split("_")[0]
+                subject_dir = subject_dir + '_' + acq
+                fig_dir = fig_dir + '_' + acq
+
+            # create output folder
+            if not os.path.isdir(subject_dir):
+                os.makedirs(subject_dir)
+            if not os.path.isdir(fig_dir):
+                os.makedirs(fig_dir)
+
+            # add acquisition directory
             dwi = {}
             dwi['subject_label'] = subject_label
             dwi['fig_dir'] = fig_dir
@@ -107,7 +125,17 @@ if args.analysis_level == "participant":
                 for i in range(numShells):
                     bShell = bShells[i]
                     dwi['shellStr'] = "_b" + str(int(bShell))
-                    dwi['denoised'] = origDWI['denoised'].replace('_denoised', '_denoised' + dwi['shellStr'])
+
+                    dwi['data_dir'] = origDWI['data_dir'] + dwi['shellStr']
+                    dwi['fig_dir'] = origDWI['fig_dir'] + dwi['shellStr']
+
+                    # create output folder
+                    if not os.path.isdir(dwi['data_dir']):
+                        os.makedirs(dwi['data_dir'])
+                    if not os.path.isdir(dwi['fig_dir']):
+                        os.makedirs(dwi['fig_dir'])
+
+                    dwi['denoised'] = origDWI['denoised'].replace(origDWI['data_dir'], dwi['data_dir'])
                     dwi['bval'] = dwi['denoised'].replace('.nii.gz', '.bval')
                     dwi['bvec'] = dwi['denoised'].replace('.nii.gz', '.bvec')
 
@@ -159,7 +187,7 @@ elif args.analysis_level == "group":
     myList = []
 
     for subject_label in subjects_to_analyze:
-        for image_file in glob(os.path.join(args.output_dir, 'qc_figures', "sub-%s"%subject_label, "*.png")):
+        for image_file in glob(os.path.join(args.output_dir, 'qc_figures', "sub-%s*"%subject_label, "*.png")):
             myList.extend([os.path.basename(image_file)[0:-4]])
 
     imgSet = set(myList)

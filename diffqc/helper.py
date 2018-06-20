@@ -101,6 +101,113 @@ def plotFig(img, title):
 
     grid[1].set_title(title, fontsize=16)
 
+def plotTensor(img, ev1, title):
+
+    ind=getImgThirds(img)
+
+    fig = plt.figure(figsize=(20,20))
+    grid = ImageGrid(fig,111,nrows_ncols=(3,3), axes_pad=0)
+    fig.subplots_adjust(wspace=0, hspace=0)
+
+    if len(img.shape) == 3:
+        img = np.expand_dims(img, axis=3)
+        img = 255 * ((img - img.min()) / (img.max() - img.min()))
+
+    if img.shape[0]<img.shape[1]:
+        lr_pad = int((img.shape[1]-img.shape[0]) / 2)
+        img = np.pad(img,[(lr_pad,lr_pad), (0, 0), (0,0), (0,0)],'constant', constant_values=(0, 0))
+        vec_ind = ind.copy()
+        ind[2] = ind[2] + lr_pad
+    else:
+        lr_pad = 0
+        vec_ind = ind
+
+    ax = (1, 0, 2)
+    cnt = 0
+    res = 1
+    for i in range(3):
+        for j in range(3):
+            if i==0:
+                pltimg = img[:,::-1,ind[i][j],:]
+                vec = ev1[:,::-1,vec_ind[i][j],:] * res * 1.7
+            elif i==1:
+                pltimg = img[:,ind[i][j],::-1,:]
+                vec = ev1[:,vec_ind[i][j],::-1,:] * res * 1.7
+            elif i==2:
+                pltimg = img[ind[i][j],::-1,::-1,:]
+                vec = ev1[vec_ind[i][j],::-1,::-1,:] * res * 1.7
+
+            pltimg = np.transpose(pltimg, axes=ax)
+            vec = np.transpose(vec, axes=ax)
+            if len(np.squeeze(pltimg).shape) == 2:
+                grid[cnt].imshow(np.squeeze(pltimg), cmap='gray', vmin = 0, vmax = 255, interpolation='none', aspect='equal')
+            else: #colored
+                grid[cnt].imshow(np.squeeze(pltimg), interpolation='none')
+
+            if i==0:
+                off = lr_pad
+            elif i==1:
+                off = lr_pad
+            elif i==2:
+                off = 0
+
+            limX = pltimg.shape[1]-1
+            limY = pltimg.shape[0]-1
+            for x in range(0, pltimg.shape[1], res):
+                for y in range(0, pltimg.shape[0], res):
+                    if pltimg[y, x] > 0 :
+                        grad = vec[y,x-off,:]
+                        col = abs(grad)/np.linalg.norm(grad)
+                        if i==0:
+                            # correct as is
+                            grad = grad
+                            col = col
+                        elif i==1:
+                            grad[1] = grad[1] * -1
+                            grad = grad[[0, 2, 1]]
+                        elif i==2:
+                            grad[0] = grad[0] * -1
+                            grad = grad[[1, 2, 0]]
+
+                        myX = [x - grad[0], x + grad[0]]
+                        myY = [y - grad[1], y + grad[1]]
+
+                        myX = np.clip(myX, 0, limX)
+                        myY = np.clip(myY, 0, limY)
+
+                        grid[cnt].plot(myX, myY, c=(col[0], col[1], col[2]), linewidth=1.5)
+
+            grid[cnt].axis('off')
+            cnt = cnt + 1
+
+    grid[0].set(ylabel='transversal')
+    grid[0].axis('on')
+    grid[0].xaxis.set_visible(False)
+    grid[0].yaxis.set_ticks([])
+    grid[0].yaxis.label.set_fontsize(16)
+    for spine in grid[0].spines.values():
+        spine.set_visible(False)
+
+    grid[3].set(ylabel='coronal')
+    grid[3].axis('on')
+    grid[3].xaxis.set_visible(False)
+    grid[3].yaxis.set_ticks([])
+    grid[3].yaxis.label.set_fontsize(16)
+    for spine in grid[3].spines.values():
+        spine.set_visible(False)
+
+    grid[6].set(ylabel='sagittal')
+    grid[6].axis('on')
+    grid[6].xaxis.set_visible(False)
+    grid[6].yaxis.set_ticks([])
+    grid[6].yaxis.label.set_fontsize(16)
+    for spine in grid[6].spines.values():
+        spine.set_visible(False)
+
+    grid[1].set_title(title, fontsize=16)
+
+
+
 def fixImageHeader(img):
     # flip dimensions to clean up Header-Trafo
     dims = img.header.get_data_shape();

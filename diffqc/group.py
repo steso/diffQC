@@ -16,15 +16,17 @@ def createWebPage(wp):
         fp.write("\t\t</form>\n<p>\n\n")
         fp.write("\t\t<div style=\"margin-left: 10px; float: right; padding: 3px; background-color: #CCC; border: 1px solid gray; border-radius: 7px;\" onclick=\"javascript: document.body.scrollTop = 0; document.documentElement.scrollTop = 0;\"><font size=2>scroll to top</font></div>\n")
         fp.write("\t</div>\n\n\t<div id=\"content\" style=\"margin-left: 280px; position: absolute; top: 10px; padding: 3px; border: 1px solid gray; border-radius: 7px; background-color: #FFF;\">\n")
-        fp.write("\t\t<table>\n")
+
 
         # loop over subjects
         for subject_label in wp['subjects']:
+            fp.write("\t\t<table>\n")
             fp.write("\t\t\t<tr><td colspan=" + str(wp['maxImg']) + " bgcolor=#EEE><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
             # loop over images
-            figures = glob(os.path.join(wp['figFolder'], "sub-%s"%subject_label,"*.png" ))
+            figures = glob(os.path.join(wp['figFolder'], "sub-%s*"%subject_label,"*.png" ))
             for image_file in sorted(figures):
                 # calcualte average mask size in voxels
                 fp.write("\t\t\t\t<td><div name=\"" + subject_label + "\" class=\"" + os.path.basename(image_file)[0:-4] + "\"><image src=\"" + image_file.replace(os.path.dirname(wp['filePath']) + os.sep, "") + "\" width=\"100%\"></div></td>\n")
-
-        fp.write("\t\t</table>\n\t</div>\t</body>\n</html>")
+            fp.write("\t\t\t</tr>")
+            fp.write("\t\t</table>\n")
+        fp.write("\t</div>\t</body>\n</html>")
