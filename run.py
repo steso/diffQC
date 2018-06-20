@@ -35,7 +35,7 @@ parser.add_argument('-v', '--version', action='version',
 args = parser.parse_args()
 
 if not args.skip_bids_validator:
-    run('bids-validator %s'%args.bids_dir)
+    helper.run('bids-validator %s'%args.bids_dir)
 
 subjects_to_analyze = []
 # only for a subset of subjects
