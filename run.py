@@ -173,7 +173,16 @@ if args.analysis_level == "participant":
 
             # check DWI -> T1 overlay
             for t1_file in glob(os.path.join(args.bids_dir, "sub-%s"%subject_label,
-                                              "anat", "*_T1w.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","dwi", "*_dwi.nii*")):
+                                              "anat", "*_T1w.nii*")) + glob(os.path.join(args.bids_dir,"sub-%s"%subject_label,"ses-*","anat", "*_T1w.nii*")):
+
+                # check if T1 is from the correct session
+                if dwi_file.split("ses-")[-1] != dwi_file:
+                    ses = 'ses-' + dwi_file.split("ses-")[-1].split("_")[0]
+                    ses_t1 = 'ses-' + t1_file.split("ses-")[-1].split("_")[0]
+                    if ses != ses_t1:
+                        # skip t1 file if sessions don't match!
+                        t1_file = ''
+
                 if (t1_file):
                     t1 = {}
                     t1['file'] = t1_file
@@ -195,6 +204,7 @@ elif args.analysis_level == "group":
     wp = {}
     wp['filePath'] = os.path.join(args.output_dir, "_quality.html")
     wp['subjects'] = subjects_to_analyze
+    wp['subFolders'] = [os.path.split(subF)[-1][4:] for subF in glob(os.path.join(args.output_dir,'qc_figures',"sub-*")) ]
     wp['figFolder'] = os.path.join(args.output_dir, 'qc_figures')
     wp['maxImg'] = len(imgSet)
     wp['maxList'] = list(sorted(imgSet))

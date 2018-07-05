@@ -23,6 +23,8 @@ def samplingScheme(dwi):
     bval = np.loadtxt(dwi['bval'])
     bvec = np.loadtxt(dwi['bvec'])
 
+    print(img.affine)
+
     qval = bval*bvec
     iqval = -qval
 
@@ -148,9 +150,25 @@ def faMap(dwi):
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
+
+
     ev = nib.load(ev1_file)
     ev = ev.get_data()
     ev[np.isnan(ev)] = 0
+
+    img = nib.load(dwi['file'])
+    (M, perm, flip_sign) = helper.fixImageHeader(img)
+
+    if flip_sign[0] < 0:
+        ev = ev[::-1,:,:]
+
+    if flip_sign[1] < 0:
+        ev = ev[:,::-1,:]
+
+    if flip_sign[2] < 0:
+        ev = ev[:,:,::-1]
+
+    print(flip_sign)
 
     helper.plotTensor(faMap, ev, 'tensor eigenvector')
 
@@ -246,6 +264,11 @@ def tensorResiduals(dwi):
     plt.close()
 
 def anatOverlay(dwi,t1):
+    if t1['file'].split("acq-")[-1] != t1['file']:
+        t1_acq = '_acq-' + t1['file'].split("acq-")[-1].split("_")[0]
+    else:
+        t1_acq = ''
+
     imgT1 = nib.load(t1['file'])
     img = nib.load(dwi['denoised'])
 
@@ -258,7 +281,18 @@ def anatOverlay(dwi,t1):
     t1 = imgT1.get_data()
     t1_affine = imgT1.affine
 
-    (t1, t1_affine) = helper.fixImageHeader(imgT1)
+    (t1_affine, perm, flip_sign) = helper.fixImageHeader(imgT1)
+
+    t1 = np.transpose(t1, perm)
+
+    if flip_sign[0] < 0:
+        t1 = t1[::-1,:,:]
+
+    if flip_sign[1] < 0:
+        t1 = t1[:,::-1,:]
+
+    if flip_sign[2] < 0:
+        t1 = t1[:,:,::-1]
 
     affine_map = AffineMap(np.eye(4),
                            t1.shape, t1_affine,
@@ -292,6 +326,6 @@ def anatOverlay(dwi,t1):
     overlay[..., 0] = b0_canny*255
 
     helper.plotFig(overlay, 'alignment DWI -> T1')
-    plot_name = 't1_overlay.png'
+    plot_name = 't1' + t1_acq + '_overlay.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()

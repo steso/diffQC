@@ -19,7 +19,7 @@ def run(command, env={}):
     while True:
         line = process.stdout.readline()
         line = str(line, 'utf-8')[:-1]
-        print(line)
+        #print(line)
         if line == '' and process.poll() != None:
             break
     if process.returncode != 0:
@@ -102,7 +102,7 @@ def plotFig(img, title):
     grid[1].set_title(title, fontsize=16)
 
 def plotTensor(img, ev1, title):
-
+    ev1[:,:,:,0] *= -1
     ind=getImgThirds(img)
 
     fig = plt.figure(figsize=(20,20))
@@ -238,16 +238,4 @@ def fixImageHeader(img):
         M[:,2] = -1 * M[:,2]
         M[:3,3] = -M[:3,:3].dot(orig[:3] - 1)
 
-    raw = img.get_data()
-    raw = np.transpose(raw, perm)
-
-    if flip_sign[0] < 0:
-        raw = raw[::-1,:,:]
-
-    if flip_sign[1] < 0:
-        raw = raw[:,::-1,:]
-
-    if flip_sign[2] < 0:
-        raw = raw[:,:,::-1]
-
-    return (raw, M)
+    return (M, perm, flip_sign)

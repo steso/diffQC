@@ -19,7 +19,7 @@ def createWebPage(wp):
 
 
         # loop over subjects
-        for subject_label in wp['subjects']:
+        for subject_label in wp['subFolders']:
             fp.write("\t\t<table>\n")
             fp.write("\t\t\t<tr><td colspan=" + str(wp['maxImg']) + " bgcolor=#EEE><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
             # loop over images
