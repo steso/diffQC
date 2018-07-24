@@ -91,6 +91,14 @@ if args.analysis_level == "participant":
             dwi['bval'] = dwi['file'].replace("_dwi.nii.gz", "_dwi.bval")
             dwi['bvec'] = dwi['file'].replace("_dwi.nii.gz", "_dwi.bvec")
 
+            # Get Header and flip_sign
+            img = nib.load(dwi['file'])
+            (M, perm, flip_sign) = helper.fixImageHeader(img)
+            
+            dwi['M'] = M
+            dwi['perm'] = perm
+            dwi['flip_sign'] = flip_sign
+
             # Get DWI sampling scheme
             participant.samplingScheme(dwi)
 

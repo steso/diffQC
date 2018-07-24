@@ -87,6 +87,16 @@ def denoise(dwi):
     noise = nib.load(dwi['noise'])
     noiseMap = noise.get_data()
     noiseMap[np.isnan(noiseMap)] = 0
+
+    if dwi['flip_sign'][0] < 0:
+        noiseMap = noiseMap[::-1,:,:]
+
+    if dwi['flip_sign'][1] < 0:
+        noiseMap = noiseMap[:,::-1,:]
+
+    if dwi['flip_sign'][2] < 0:
+        noiseMap = noiseMap[:,:,::-1]
+
     helper.plotFig(noiseMap, 'Noise Map')
 
     plot_name = 'noise_map.png'
@@ -144,31 +154,29 @@ def faMap(dwi):
     faMap[np.isnan(faMap)] = 0
     faMap = faMap * dwi['mask']
 
+    ev = nib.load(ev1_file)
+    ev = ev.get_data()
+    ev[np.isnan(ev)] = 0
+
+    if dwi['flip_sign'][0] < 0:
+        ev = ev[::-1,:,:]
+        faMap = faMap[::-1,:,:]
+
+    if dwi['flip_sign'][1] < 0:
+        ev = ev[:,::-1,:]
+        faMap = faMap[:,::-1,:]
+
+    if dwi['flip_sign'][2] < 0:
+        ev = ev[:,:,::-1]
+        faMap = faMap[:,:,::-1]
+
     helper.plotFig(faMap, 'fractional anisotropy')
 
     plot_name = 'fractional_anisotropy' + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
-
-
-    ev = nib.load(ev1_file)
-    ev = ev.get_data()
-    ev[np.isnan(ev)] = 0
-
-    img = nib.load(dwi['file'])
-    (M, perm, flip_sign) = helper.fixImageHeader(img)
-
-    if flip_sign[0] < 0:
-        ev = ev[::-1,:,:]
-
-    if flip_sign[1] < 0:
-        ev = ev[:,::-1,:]
-
-    if flip_sign[2] < 0:
-        ev = ev[:,:,::-1]
-
-    print(flip_sign)
+    #print(flip_sign)
 
     helper.plotTensor(faMap, ev, 'tensor eigenvector')
 
@@ -211,6 +219,16 @@ def tensorResiduals(dwi):
     res[res>max_thresh] = 0
 
     res[mask]=0
+
+
+    if dwi['flip_sign'][0] < 0:
+        raw = raw[::-1,:,:,:]
+
+    if dwi['flip_sign'][1] < 0:
+        raw = raw[:,::-1,:,:]
+
+    if dwi['flip_sign'][2] < 0:
+        raw = raw[:,:,::-1,:]
 
     # Plot tensor residuals
     res = helper.normImg(res)
