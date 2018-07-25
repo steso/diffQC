@@ -95,10 +95,12 @@ if args.analysis_level == "participant":
             img = nib.load(dwi['file'])
             (M, perm, flip_sign) = helper.fixImageHeader(img)
 
+            voxSize = img.header['pixdim'][1:4]
+
             dwi['M'] = M
             dwi['perm'] = perm
             dwi['flip_sign'] = flip_sign
-            dwi['voxSize'] = img.header['pixdim'][1:4]
+            dwi['voxSize'] = voxSize #[perm]
 
             # Get DWI sampling scheme
             participant.samplingScheme(dwi)

@@ -343,7 +343,9 @@ def anatOverlay(dwi,t1):
     overlay[..., 2] = t1
     overlay[..., 0] = b0_canny*255
 
-    helper.plotFig(overlay, 'alignment DWI -> T1', imgT1.header['pixdim'][1:4])
+    voxSize = imgT1.header['pixdim'][1:4]
+
+    helper.plotFig(overlay, 'alignment DWI -> T1', voxSize) #[perm])
     plot_name = 't1' + t1_acq + '_overlay.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
