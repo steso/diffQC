@@ -40,7 +40,7 @@ def fourierSharpness(img):
     AF = abs(np.roll(f, np.array(f.shape)/2, axis=(0, 1, 2)));
     return float(np.count_nonzero(AF > (np.max(AF)/1000))) / float(np.prod(img.shape))
 
-def plotFig(img, title):
+def plotFig(img, title, voxSize):
 
     ind=getImgThirds(img)
 
@@ -61,20 +61,22 @@ def plotFig(img, title):
     cnt=0
     for i in range(3):
         for j in range(3):
-            if i==0:
+            if i==0: # axial
                 pltimg = img[:,::-1,ind[i][j],:]
-
-            elif i==1:
+                ar = voxSize[1]/voxSize[0]
+            elif i==1: # coronal
                 pltimg = img[:,ind[i][j],::-1,:]
-            elif i==2:
+                ar = voxSize[2]/voxSize[0]
+            elif i==2: # sagittal
                 pltimg = img[ind[i][j],::-1,::-1,:]
+                ar = voxSize[2]/voxSize[1]
 
             pltimg = np.transpose(pltimg, axes=ax)
 
             if len(np.squeeze(pltimg).shape) == 2:
-                grid[cnt].imshow(np.squeeze(pltimg), cmap='gray', vmin = 0, vmax = 255, interpolation='none')
+                grid[cnt].imshow(np.squeeze(pltimg), cmap='gray', vmin = 0, vmax = 255, interpolation='none', aspect=ar)
             else: #colored
-                grid[cnt].imshow(np.squeeze(pltimg), interpolation='none')
+                grid[cnt].imshow(np.squeeze(pltimg), interpolation='none', aspect=ar)
 
             grid[cnt].axis('off')
 

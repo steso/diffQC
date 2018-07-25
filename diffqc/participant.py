@@ -97,7 +97,7 @@ def denoise(dwi):
     if dwi['flip_sign'][2] < 0:
         noiseMap = noiseMap[:,:,::-1]
 
-    helper.plotFig(noiseMap, 'Noise Map')
+    helper.plotFig(noiseMap, 'Noise Map', dwi['voxSize'])
 
     plot_name = 'noise_map.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
@@ -170,7 +170,7 @@ def faMap(dwi):
         ev = ev[:,:,::-1]
         faMap = faMap[:,:,::-1]
 
-    helper.plotFig(faMap, 'fractional anisotropy')
+    helper.plotFig(faMap, 'fractional anisotropy', dwi['voxSize'])
 
     plot_name = 'fractional_anisotropy' + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
@@ -343,7 +343,7 @@ def anatOverlay(dwi,t1):
     overlay[..., 2] = t1
     overlay[..., 0] = b0_canny*255
 
-    helper.plotFig(overlay, 'alignment DWI -> T1')
+    helper.plotFig(overlay, 'alignment DWI -> T1', imgT1.header['pixdim'][1:4])
     plot_name = 't1' + t1_acq + '_overlay.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
