@@ -29,7 +29,7 @@ def getImgThirds(img):
     indx = np.floor(np.linspace(img.shape[2]/3, img.shape[2]-img.shape[2]/3,3)).astype(int)
     indy = np.floor(np.linspace(img.shape[1]/3, img.shape[1]-img.shape[1]/3,3)).astype(int)
     indz = np.floor(np.linspace(img.shape[0]/3, img.shape[0]-img.shape[0]/3,3)).astype(int)
-    return [indx, indy, indz]
+    return [indx, indy[::-1], indz]
 
 
 def normImg(img):

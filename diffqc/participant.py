@@ -187,9 +187,10 @@ def faMap(dwi):
 def mdsMap(dwi):
 
     img = nib.load(dwi['denoised'])
+    bval = np.loadtxt(dwi['bval'])
 
     mdsMap = img.get_data()
-    mdsMap = np.mean(mdsMap[:,:,:,dwi['bval'] > 50], axis=3)
+    mdsMap = np.mean(mdsMap[:,:,:,bval > 50], axis=3)
 
     mdsMap[np.isnan(mdsMap)] = 0
     mdsMap = mdsMap * dwi['mask']
