@@ -166,6 +166,7 @@ if args.analysis_level == "participant":
                     # perform tensor fit, faMap and Residuals
                     participant.dtiFit(dwi)
                     participant.faMap(dwi)
+                    participant.mdsMap(dwi)
                     participant.tensorResiduals(dwi)
 
 
@@ -178,6 +179,9 @@ if args.analysis_level == "participant":
 
                 # Create FA maps
                 participant.faMap(dwi)
+
+                # Calculate MDS map
+                participant.mdsMap(dwi)
 
                 # Calc DTI residuals
                 participant.tensorResiduals(dwi)

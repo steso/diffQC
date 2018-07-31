@@ -184,6 +184,32 @@ def faMap(dwi):
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
+def mdsMap(dwi):
+
+    img = nib.load(dwi['denoised'])
+
+    mdsMap = img.get_data()
+    mdsMap = np.mean(mdsMap[:,:,:,dwi['bval'] > 50], axis=3)
+
+    mdsMap[np.isnan(mdsMap)] = 0
+    mdsMap = mdsMap * dwi['mask']
+
+    if dwi['flip_sign'][0] < 0:
+        mdsMap = mdsMap[::-1,:,:]
+
+    if dwi['flip_sign'][1] < 0:
+        mdsMap = mdsMap[:,::-1,:]
+
+    if dwi['flip_sign'][2] < 0:
+        mdsMap = mdsMap[:,:,::-1]
+
+    helper.plotFig(mdsMap, 'mean diffusion signal', dwi['voxSize'])
+
+    plot_name = 'mean_diffusion_signal' + '.png'
+    plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
+    plt.close()
+
+
 def tensorResiduals(dwi):
     bval = np.loadtxt(dwi['bval'])
     bvec = np.loadtxt(dwi['bvec'])
