@@ -23,7 +23,7 @@ def createWebPage(wp):
             fp.write("\t\t<table>\n")
             fp.write("\t\t\t<tr><td colspan=" + str(wp['maxImg']) + " bgcolor=#EEE><center><font size=3><b>sub-" + subject_label + "</b></font></center></td></tr>\n")
             # loop over images
-            figures = glob(os.path.join(wp['figFolder'], "sub-%s*"%subject_label,"*.png" ))
+            figures = glob(os.path.join(wp['figFolder'], "sub-%s"%subject_label,"*.png" ))
             for image_file in sorted(figures):
                 # calcualte average mask size in voxels
                 fp.write("\t\t\t\t<td><div name=\"" + subject_label + "\" class=\"" + os.path.basename(image_file)[0:-4] + "\"><image src=\"" + image_file.replace(os.path.dirname(wp['filePath']) + os.sep, "") + "\" width=\"100%\"></div></td>\n")
