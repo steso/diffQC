@@ -29,7 +29,7 @@ def getImgThirds(img):
     indx = np.floor(np.linspace(img.shape[2]/3, img.shape[2]-img.shape[2]/3,3)).astype(int)
     indy = np.floor(np.linspace(img.shape[1]/3, img.shape[1]-img.shape[1]/3,3)).astype(int)
     indz = np.floor(np.linspace(img.shape[0]/3, img.shape[0]-img.shape[0]/3,3)).astype(int)
-    return [indx, indy[::-1], indz]
+    return [indx, indy, indz]
 
 
 def normImg(img):
@@ -68,7 +68,7 @@ def plotFig(img, title, voxSize):
                 pltimg = img[:,ind[i][j],::-1,:]
                 ar = voxSize[2]/voxSize[0]
             elif i==2: # sagittal
-                pltimg = img[ind[i][j],::-1,::-1,:]
+                pltimg = img[ind[i][j],:,::-1,:]
                 ar = voxSize[2]/voxSize[1]
 
             pltimg = np.transpose(pltimg, axes=ax)
@@ -136,8 +136,8 @@ def plotTensor(img, ev1, title):
                 pltimg = img[:,ind[i][j],::-1,:]
                 vec = ev1[:,vec_ind[i][j],::-1,:] * res * 1.7
             elif i==2:
-                pltimg = img[ind[i][j],::-1,::-1,:]
-                vec = ev1[vec_ind[i][j],::-1,::-1,:] * res * 1.7
+                pltimg = img[ind[i][j],:,::-1,:]
+                vec = ev1[vec_ind[i][j],:,::-1,:] * res * 1.7
 
             pltimg = np.transpose(pltimg, axes=ax)
             vec = np.transpose(vec, axes=ax)
