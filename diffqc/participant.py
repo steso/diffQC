@@ -1,6 +1,7 @@
 import os
 import nibabel as nib
 import numpy as np
+import pandas as pd
 
 import matplotlib
 import matplotlib.cm as cm
@@ -209,6 +210,10 @@ def mdsMap(dwi):
     plot_name = 'mean_diffusion_signal' + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
+
+    mdsSharpness = helper.fourierSharpness(mdsMap)
+
+    dwi['stats']['mds_sharpness'] = mdsSharpness
 
 
 def tensorResiduals(dwi):

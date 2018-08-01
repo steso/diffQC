@@ -5,6 +5,8 @@ import nibabel as nib
 import numpy as np
 from glob import glob
 from diffqc import *
+import shutil
+import pandas as pd
 
 __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 'version')).read()
@@ -27,6 +29,8 @@ parser.add_argument('--participant_label', help='The label(s) of the participant
                    'participants can be specified with a space separated list.',
                    nargs="+")
 parser.add_argument('--skip_bids_validator', help='Whether or not to perform BIDS dataset validation',
+                   action='store_true')
+parser.add_argument('--keep_data', help='Keep intermediate data (e.g. fa maps)',
                    action='store_true')
 parser.add_argument('-v', '--version', action='version',
                     version='BIDS-App example version {}'.format(__version__))
@@ -51,10 +55,6 @@ if args.analysis_level == "participant":
     # find all DWI files and run denoising and tensor / residual calculation
     for subject_label in subjects_to_analyze:
 
-
-
-
-
         print("processing sub-" + subject_label + "\n")
 
         # loop over DWI-Files
@@ -64,29 +64,36 @@ if args.analysis_level == "participant":
             # create subj dir in qc_data & qc_figures folders
             subject_dir = os.path.join(args.output_dir, 'qc_data', 'sub-' + subject_label)
             fig_dir = os.path.join(args.output_dir, 'qc_figures', 'sub-' + subject_label)
+            stats_dir = os.path.join(args.output_dir, 'qc_stats', 'sub-' + subject_label)
 
             # check session
             if dwi_file.split("ses-")[-1] != dwi_file:
                 ses = 'ses-' + dwi_file.split("ses-")[-1].split("_")[0]
                 subject_dir = subject_dir + '_' + ses
                 fig_dir = fig_dir + '_' + ses
+                stats_dir = stats_dir + '_' + ses
+
             # check acquisition
             if dwi_file.split("acq-")[-1] != dwi_file:
                 acq = 'acq-' + dwi_file.split("acq-")[-1].split("_")[0]
                 subject_dir = subject_dir + '_' + acq
                 fig_dir = fig_dir + '_' + acq
+                stats_dir = stats_dir + '_' + acq
 
             # create output folder
             if not os.path.isdir(subject_dir):
                 os.makedirs(subject_dir)
             if not os.path.isdir(fig_dir):
                 os.makedirs(fig_dir)
+            if not os.path.isdir(stats_dir):
+                os.makedirs(stats_dir)
 
             # add acquisition directory
             dwi = {}
             dwi['subject_label'] = subject_label
             dwi['fig_dir'] = fig_dir
             dwi['data_dir'] = subject_dir
+            dwi['stats_dir'] = stats_dir
             dwi['file'] = dwi_file
             dwi['bval'] = dwi['file'].replace("_dwi.nii.gz", "_dwi.bval")
             dwi['bvec'] = dwi['file'].replace("_dwi.nii.gz", "_dwi.bvec")
@@ -101,6 +108,12 @@ if args.analysis_level == "participant":
             dwi['perm'] = perm
             dwi['flip_sign'] = flip_sign
             dwi['voxSize'] = voxSize #[perm]
+
+            stats = {}
+            stats['subject_label'] = subject_label
+            stats['voxel_size'] = voxSize
+
+            dwi['stats'] = stats
 
             # Get DWI sampling scheme
             participant.samplingScheme(dwi)
@@ -204,6 +217,21 @@ if args.analysis_level == "participant":
                     participant.anatOverlay(dwi, t1)
 
 
+            # Create stats-file
+            df = pd.DataFrame([])
+            df = df.append(pd.DataFrame(dwi['stats'])
+
+            stats_file = os.path.join(stats_dir, "stats.tsv")
+            df.to_csv(stats_file, sep="\t", index=False))
+
+            # Cleanup dwi-level
+            if not args.keep_data:
+                shutil.rmtree(subject_dir)
+
+    # Cleanup top-level
+    if not args.keep_data:
+        shutil.rmtree(os.path.join(args.output_dir, 'qc_data'))
+
 # running group level
 elif args.analysis_level == "group":
 
@@ -225,3 +253,11 @@ elif args.analysis_level == "group":
     wp['maxList'] = list(sorted(imgSet))
 
     group.createWebPage(wp)
+
+    # create group stats table
+    df = pd.DataFrame([])
+    or subj_stats in glob(os.path.join(args.output_dir, 'qc_stats', "*.tsv")):
+        df = df.append(pd.read_csv(subj_stats, sep="\t"))
+
+    out_file = os.path.join(args.output_dir, "qc_stats_all.tsv")
+    df.to_csv(out_file, sep="\t", index=False)
