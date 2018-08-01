@@ -37,7 +37,8 @@ def normImg(img):
 
 def fourierSharpness(img):
     f = np.fft.fftn(img, axes=(0, 1, 2))
-    AF = abs(np.roll(f, np.array(f.shape)/2, axis=(0, 1, 2)));
+    shift = (np.array(f.shape)/2).astype(int)
+    AF = abs(np.roll(np.roll(np.roll(f, shift[0], axis=0), shift[1], axis=1), shift[2], axis=2))
     return float(np.count_nonzero(AF > (np.max(AF)/1000))) / float(np.prod(img.shape))
 
 def plotFig(img, title, voxSize):

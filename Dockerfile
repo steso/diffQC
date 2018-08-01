@@ -46,6 +46,7 @@ ENV PYTHONPATH=/mrtrix3/lib
 RUN apt-get install -y python3-pip libfreetype6-dev libpng12-dev python3-tk
 RUN pip3 install --upgrade pip
 RUN pip3 install matplotlib scipy scikit-learn dipy scikit-image
+RUN pip3 install pandas --no-build-isolation
 
 COPY run.py /run.py
 COPY diffqc /diffqc/

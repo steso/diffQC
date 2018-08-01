@@ -219,10 +219,10 @@ if args.analysis_level == "participant":
 
             # Create stats-file
             df = pd.DataFrame([])
-            df = df.append(pd.DataFrame(dwi['stats'])
+            df = df.append(pd.DataFrame(dwi['stats']))
 
             stats_file = os.path.join(stats_dir, "stats.tsv")
-            df.to_csv(stats_file, sep="\t", index=False))
+            df.to_csv(stats_file, sep="\t", index=False)
 
             # Cleanup dwi-level
             if not args.keep_data:
@@ -256,7 +256,7 @@ elif args.analysis_level == "group":
 
     # create group stats table
     df = pd.DataFrame([])
-    or subj_stats in glob(os.path.join(args.output_dir, 'qc_stats', "*.tsv")):
+    for subj_stats in glob(os.path.join(args.output_dir, 'qc_stats', "*.tsv")):
         df = df.append(pd.read_csv(subj_stats, sep="\t"))
 
     out_file = os.path.join(args.output_dir, "qc_stats_all.tsv")
