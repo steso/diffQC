@@ -7,6 +7,7 @@ from glob import glob
 from diffqc import *
 import shutil
 import pandas as pd
+import collections
 
 __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 'version')).read()
@@ -100,18 +101,25 @@ if args.analysis_level == "participant":
 
             # Get Header and flip_sign
             img = nib.load(dwi['file'])
+
+            # np.set_printoptions(precision=2, suppress=True)
+            # print(np.array(img.get_affine()))
+
             (M, perm, flip_sign) = helper.fixImageHeader(img)
 
             voxSize = img.header['pixdim'][1:4]
 
+            # print(M)
+            # print(perm)
+            # print(flip_sign)
+
             dwi['M'] = M
             dwi['perm'] = perm
             dwi['flip_sign'] = flip_sign
-            dwi['voxSize'] = voxSize #[perm]
-
-            stats = {}
+            dwi['voxSize'] = voxSize[perm]
+            stats = collections.OrderedDict()
             stats['subject_label'] = subject_label
-            stats['voxel_size'] = voxSize
+            stats['voxel_size'] = [np.round(voxSize, decimals=2)]
 
             dwi['stats'] = stats
 
@@ -182,6 +190,9 @@ if args.analysis_level == "participant":
                     participant.mdsMap(dwi)
                     participant.tensorResiduals(dwi)
 
+                    # Cleanup dwi data at shell-level
+                    if not args.keep_data:
+                        shutil.rmtree(dwi['data_dir'])
 
                 # restore MultiShell Files in Config
                 dwi = origDWI.copy()
@@ -219,7 +230,7 @@ if args.analysis_level == "participant":
 
             # Create stats-file
             df = pd.DataFrame([])
-            df = df.append(pd.DataFrame(dwi['stats']))
+            df = df.append(pd.DataFrame(dwi['stats'], columns=dwi['stats'].keys()))
 
             stats_file = os.path.join(stats_dir, "stats.tsv")
             df.to_csv(stats_file, sep="\t", index=False)
@@ -256,7 +267,7 @@ elif args.analysis_level == "group":
 
     # create group stats table
     df = pd.DataFrame([])
-    for subj_stats in glob(os.path.join(args.output_dir, 'qc_stats', "*.tsv")):
+    for subj_stats in glob(os.path.join(args.output_dir, 'qc_stats', 'sub-*', "*.tsv")):
         df = df.append(pd.read_csv(subj_stats, sep="\t"))
 
     out_file = os.path.join(args.output_dir, "qc_stats_all.tsv")

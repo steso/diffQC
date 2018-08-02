@@ -20,11 +20,9 @@ from dipy.segment.mask import median_otsu
 from diffqc import helper
 
 def samplingScheme(dwi):
-    img = nib.load(dwi['file'])
+    # img = nib.load(dwi['file'])
     bval = np.loadtxt(dwi['bval'])
     bvec = np.loadtxt(dwi['bvec'])
-
-    print(img.affine)
 
     qval = bval*bvec
     iqval = -qval
@@ -87,6 +85,7 @@ def denoise(dwi):
 
     noise = nib.load(dwi['noise'])
     noiseMap = noise.get_data()
+    noiseMap = np.transpose(noiseMap, dwi['perm'])
     noiseMap[np.isnan(noiseMap)] = 0
 
     if dwi['flip_sign'][0] < 0:
@@ -107,6 +106,22 @@ def denoise(dwi):
 def brainMask(dwi):
     img = nib.load(dwi['denoised'])
     raw = img.get_data()
+
+    b0_raw = raw[:,:,:,dwi['shellind']==0]
+    if b0_raw.shape[3] > 0:
+        b0_raw = np.mean(b0_raw, axis=3)
+
+    raw = np.transpose(raw, np.hstack((dwi['perm'], 3)))
+    if dwi['flip_sign'][0] < 0:
+        raw = raw[::-1,:,:,:]
+
+    if dwi['flip_sign'][1] < 0:
+        raw = raw[:,::-1,:,:]
+
+    if dwi['flip_sign'][2] < 0:
+        raw = raw[:,:,::-1,:]
+
+
     b0 = raw[:,:,:,dwi['shellind']==0]
 
     if b0.shape[3] > 0:
@@ -114,7 +129,7 @@ def brainMask(dwi):
 
     _, b0_mask = median_otsu(b0,2,1)
 
-    dwi['b0'] = b0
+    dwi['b0'] = b0_raw
     dwi['mask'] = b0_mask
 
 def dtiFit(dwi):
@@ -148,28 +163,30 @@ def faMap(dwi):
     # print(cmd)
     helper.run(cmd)
 
+    # get fa
     fa = nib.load(fa_file)
-
-
     faMap = fa.get_data()
     faMap[np.isnan(faMap)] = 0
-    faMap = faMap * dwi['mask']
 
+    # get primary eigenvector
     ev = nib.load(ev1_file)
     ev = ev.get_data()
     ev[np.isnan(ev)] = 0
 
-    if dwi['flip_sign'][0] < 0:
-        ev = ev[::-1,:,:]
+    if dwi['flip_sign'][dwi['perm'][0]] < 0:
         faMap = faMap[::-1,:,:]
+        ev = ev[::-1,:,:]
 
-    if dwi['flip_sign'][1] < 0:
-        ev = ev[:,::-1,:]
+    if dwi['flip_sign'][dwi['perm'][1]] < 0:
         faMap = faMap[:,::-1,:]
+        ev = ev[:,::-1,:]
 
-    if dwi['flip_sign'][2] < 0:
-        ev = ev[:,:,::-1]
+    if dwi['flip_sign'][dwi['perm'][2]] < 0:
         faMap = faMap[:,:,::-1]
+        ev = ev[:,:,::-1]
+
+    faMap = np.transpose(faMap, dwi['perm'])
+    faMap = faMap * dwi['mask']
 
     helper.plotFig(faMap, 'fractional anisotropy', dwi['voxSize'])
 
@@ -177,7 +194,8 @@ def faMap(dwi):
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
 
-    #print(flip_sign)
+
+    ev = np.transpose(ev, np.hstack((dwi['perm'],3)))
 
     helper.plotTensor(faMap, ev, 'tensor eigenvector')
 
@@ -192,9 +210,9 @@ def mdsMap(dwi):
 
     mdsMap = img.get_data()
     mdsMap = np.mean(mdsMap[:,:,:,bval > 50], axis=3)
-
     mdsMap[np.isnan(mdsMap)] = 0
-    mdsMap = mdsMap * dwi['mask']
+
+    mdsMap = np.transpose(mdsMap, dwi['perm'])
 
     if dwi['flip_sign'][0] < 0:
         mdsMap = mdsMap[::-1,:,:]
@@ -204,6 +222,8 @@ def mdsMap(dwi):
 
     if dwi['flip_sign'][2] < 0:
         mdsMap = mdsMap[:,:,::-1]
+
+    mdsMap = mdsMap * dwi['mask']
 
     helper.plotFig(mdsMap, 'mean diffusion signal', dwi['voxSize'])
 
@@ -241,8 +261,7 @@ def tensorResiduals(dwi):
     b0_mask = dwi['mask']
 
     mask = np.repeat(np.expand_dims(np.invert(b0_mask), axis=3), raw.shape[3], axis=3)
-
-    res[mask] = 0
+    res = np.transpose(res, np.hstack((dwi['perm'],3)))
 
     res[np.isnan(res)] = 0
     res[np.isinf(res)] = 0
@@ -252,6 +271,7 @@ def tensorResiduals(dwi):
 
     res[mask]=0
 
+    res = np.transpose(res, np.hstack((np.argsort(dwi['perm']),3)))
 
     if dwi['flip_sign'][0] < 0:
         raw = raw[::-1,:,:,:]
@@ -290,6 +310,8 @@ def tensorResiduals(dwi):
     plt.close()
 
     # Plot Intensity Values per shell
+    raw = np.transpose(raw, np.hstack((np.argsort(dwi['perm']),3)))
+
     fig, ax = plt.subplots(nrows=shells.size, ncols=3, figsize=(15,3*shells.size))
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
 

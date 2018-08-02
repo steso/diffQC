@@ -26,9 +26,9 @@ def run(command, env={}):
         raise Exception("Non zero return code: %d"%process.returncode)
 
 def getImgThirds(img):
-    indx = np.floor(np.linspace(img.shape[2]/3, img.shape[2]-img.shape[2]/3,3)).astype(int)
-    indy = np.floor(np.linspace(img.shape[1]/3, img.shape[1]-img.shape[1]/3,3)).astype(int)
-    indz = np.floor(np.linspace(img.shape[0]/3, img.shape[0]-img.shape[0]/3,3)).astype(int)
+    indx = np.floor(np.linspace(img.shape[2]/3-1, img.shape[2]-img.shape[2]/3,3)).astype(int)
+    indy = np.floor(np.linspace(img.shape[1]/3-1, img.shape[1]-img.shape[1]/3,3)).astype(int)
+    indz = np.floor(np.linspace(img.shape[0]/3-1, img.shape[0]-img.shape[0]/3,3)).astype(int)
     return [indx, indy, indz]
 
 
@@ -58,6 +58,12 @@ def plotFig(img, title, voxSize):
         img = np.pad(img,[(lr_pad,lr_pad), (0, 0), (0,0), (0,0)],'constant', constant_values=(0, 0))
         ind[2] = ind[2] + lr_pad
 
+    if img.shape[1]<img.shape[0]:
+        ap_pad = int((img.shape[0]-img.shape[1]) / 2)
+        img = np.pad(img, [(0, 0), (ap_pad, ap_pad), (0, 0), (0, 0)], 'constant', constant_values=(0, 0))
+        #ind[0] = ind[0] + ap_pad
+        ind[1] = ind[1] + ap_pad
+
     ax = (1, 0, 2)
     cnt=0
     for i in range(3):
@@ -76,7 +82,7 @@ def plotFig(img, title, voxSize):
 
             if len(np.squeeze(pltimg).shape) == 2:
                 grid[cnt].imshow(np.squeeze(pltimg), cmap='gray', vmin = 0, vmax = 255, interpolation='none', aspect=ar)
-            else: #colored
+            else: # colored
                 grid[cnt].imshow(np.squeeze(pltimg), interpolation='none', aspect=ar)
 
             grid[cnt].axis('off')
@@ -106,8 +112,7 @@ def plotFig(img, title, voxSize):
 
 def plotTensor(img, ev1, title):
     ev1[:,:,:,0] *= -1
-    ind=getImgThirds(img)
-
+    ind = getImgThirds(img)
     fig = plt.figure(figsize=(20,20))
     grid = ImageGrid(fig,111,nrows_ncols=(3,3), axes_pad=0)
     fig.subplots_adjust(wspace=0, hspace=0)
@@ -118,12 +123,30 @@ def plotTensor(img, ev1, title):
 
     if img.shape[0]<img.shape[1]:
         lr_pad = int((img.shape[1]-img.shape[0]) / 2)
-        img = np.pad(img,[(lr_pad,lr_pad), (0, 0), (0,0), (0,0)],'constant', constant_values=(0, 0))
-        vec_ind = ind.copy()
+        if img.shape[0] + 2*lr_pad < img.shape[1]:
+            lr_pad2 = lr_pad + 1
+        else:
+            lr_pad2 = lr_pad
+        padimg = np.pad(img,[(lr_pad,lr_pad2), (0, 0), (0,0), (0,0)],'constant', constant_values=(0, 0))
         ind[2] = ind[2] + lr_pad
     else:
         lr_pad = 0
-        vec_ind = ind
+        lr_pad2 = 0
+        padimg = img.copy()
+        vec_ind = ind.copy()
+
+    if img.shape[1]<img.shape[0]:
+        ap_pad = int((img.shape[0]-img.shape[1]) / 2)
+        if img.shape[1] + 2*ap_pad < img.shape[0]:
+            ap_pad2 = ap_pad + 1
+        else:
+            ap_pad2 = ap_pad
+        padimg = np.pad(img, [(0, 0), (ap_pad, ap_pad2), (0, 0), (0, 0)], 'constant', constant_values=(0, 0))
+        ind[1] = ind[1] + ap_pad
+    else:
+        ap_pad = 0
+        ap_pad2 = 0
+        vec_ind = ind.copy()
 
     ax = (1, 0, 2)
     cnt = 0
@@ -131,13 +154,13 @@ def plotTensor(img, ev1, title):
     for i in range(3):
         for j in range(3):
             if i==0:
-                pltimg = img[:,::-1,ind[i][j],:]
+                pltimg = padimg[:,::-1,ind[i][j],:]
                 vec = ev1[:,::-1,vec_ind[i][j],:] * res * 1.7
             elif i==1:
-                pltimg = img[:,ind[i][j],::-1,:]
+                pltimg = padimg[:,ind[i][j],::-1,:]
                 vec = ev1[:,vec_ind[i][j],::-1,:] * res * 1.7
             elif i==2:
-                pltimg = img[ind[i][j],:,::-1,:]
+                pltimg = padimg[ind[i][j],:,::-1,:]
                 vec = ev1[vec_ind[i][j],:,::-1,:] * res * 1.7
 
             pltimg = np.transpose(pltimg, axes=ax)
@@ -147,19 +170,23 @@ def plotTensor(img, ev1, title):
             else: #colored
                 grid[cnt].imshow(np.squeeze(pltimg), interpolation='none')
 
-            if i==0:
-                off = lr_pad
-            elif i==1:
-                off = lr_pad
-            elif i==2:
-                off = 0
+            if i==0: # transversal x/y
+                off = lr_pad2
+                off2 = ap_pad2
+            elif i==1: # coronal x/z
+                off = lr_pad2
+                off2 = 0
+            elif i==2: # sagittal y/z
+                off = ap_pad2
+                off2 = 0
 
             limX = pltimg.shape[1]-1
             limY = pltimg.shape[0]-1
+
             for x in range(0, pltimg.shape[1], res):
                 for y in range(0, pltimg.shape[0], res):
                     if pltimg[y, x] > 0 :
-                        grad = vec[y,x-off,:]
+                        grad = vec[y-off2,x-off,:]
                         col = abs(grad)/np.linalg.norm(grad)
                         if i==0:
                             # correct as is
@@ -218,6 +245,8 @@ def fixImageHeader(img):
     M = img.affine
 
     perm = np.argsort(np.square(np.transpose(M[:3,:3])).dot(np.transpose([1, 2, 3])))
+    if (perm == [0, 1, 2]).all():
+        perm = np.argsort(np.square(M[:3,:3]).dot([1, 2, 3]))
 
     M = M[:,np.insert(perm,3,3)]
     flip_sign = np.sign(M[:3,:3].dot([1, 2, 3]))
