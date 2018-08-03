@@ -12,6 +12,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 import sklearn.cluster
 from skimage import feature
+from statsmodels import robust
 
 from dipy.viz import regtools
 from dipy.align.imaffine import AffineMap
@@ -123,14 +124,17 @@ def brainMask(dwi):
 
 
     b0 = raw[:,:,:,dwi['shellind']==0]
+    mds = raw[:,:,:,dwi['shellind']!=0]
+    mds = np.median(mds, axis=3)
 
     if b0.shape[3] > 0:
         b0 = np.mean(b0, axis=3)
 
     _, b0_mask = median_otsu(b0,2,1)
+    _, mds_mask = median_otsu(mds,2,1)
 
     dwi['b0'] = b0_raw
-    dwi['mask'] = b0_mask
+    dwi['mask'] = np.bitwise_or(b0_mask, mds_mask)
 
 def dtiFit(dwi):
 
@@ -334,6 +338,71 @@ def tensorResiduals(dwi):
     plot_name = 'intensity_values' + '.png'
     plt.savefig(os.path.join(dwi['fig_dir'], plot_name), bbox_inches='tight')
     plt.close()
+
+    # calculate Slicewise Signal Intenstiy Outlier according to Sairanen et al. 2018
+
+    tl = 3.5
+    tu = 10
+
+    raw = np.transpose(raw, np.hstack((dwi['perm'],3)))
+    sigMap = raw[:,:,:,bval > 50]
+    resMap = res[:,:,:,bval > 50]
+
+    b0_mask = np.transpose(b0_mask, dwi['perm'])
+    mask = np.repeat(np.expand_dims(np.invert(b0_mask), axis=3), sigMap.shape[3], axis=3)
+
+    sigMap[mask] = 0
+    sigMap[np.isnan(sigMap)] = 0
+    sigMap[np.isinf(sigMap)] = 0
+    resMap[mask] = 0
+    resMap[np.isnan(resMap)] = 0
+    resMap[np.isinf(resMap)] = 0
+
+    varSig = np.zeros(sigMap.shape[2:])
+    varRes = np.zeros(resMap.shape[2:])
+
+    for j in range(sigMap.shape[2]):
+        for i in range(sigMap.shape[3]):
+            slSig = np.ravel(sigMap[:,:,j,i])
+            slReg = np.ravel(resMap[:,:,j,i])
+            varSig[j,i] = np.var(slSig[slSig>0])
+            varRes[j,i] = np.var(slReg[slReg>0])
+            # varSig[j,i] = np.mean(slSig[slSig>0])
+            # varRes[j,i] = np.mean(slReg[slReg>0])
+
+    # print(varSig)
+    # print(varRes)
+
+    # modified Z-score
+    # medSig = np.median(varSig, axis=1)
+    # madSig = robust.mad(varSig, axis=1, c=1.4826)
+    # medRes = np.median(varRes, axis=1)
+    # madRes = robust.mad(varRes, axis=1, c=1.4826)
+
+    # Z-score
+    medSig = np.mean(varSig, axis=1)
+    madSig = np.std(varSig, axis=1)
+    medRes = np.mean(varRes, axis=1)
+    madRes = np.std(varRes, axis=1)
+
+    modZSig = np.abs(varSig - np.repeat(np.expand_dims(medSig, axis=1), varSig.shape[1], axis=1)) / np.repeat(np.expand_dims(madSig, axis=1), varSig.shape[1], axis=1)
+    modZRes = np.abs(varRes - np.repeat(np.expand_dims(medRes, axis=1), varRes.shape[1], axis=1)) / np.repeat(np.expand_dims(madRes, axis=1), varRes.shape[1], axis=1)
+
+    sigOutlier = modZSig
+    resOutlier = modZRes
+
+    sigOutlier[modZSig<tl] = 0
+    resOutlier[modZRes<tl] = 0
+    sigOutlier[np.bitwise_and(modZSig <= tu, modZSig >= tl)] = (modZSig[np.bitwise_and(modZSig <= tu, modZSig >= tl)] - tl) / (tu - tl)
+    resOutlier[np.bitwise_and(modZRes <= tu, modZRes >= tl)] = (modZRes[np.bitwise_and(modZRes <= tu, modZRes >= tl)] - tl) / (tu - tl)
+    sigOutlier[modZSig>tu] = 1
+    resOutlier[modZRes>tu] = 1
+
+    print(sigOutlier)
+    print(resOutlier)
+
+    dwi['stats']['signal_outlier'] = np.mean(np.ravel(sigOutlier))
+    dwi['stats']['residual_outlier'] = np.mean(np.ravel(resOutlier))
 
 def anatOverlay(dwi,t1):
     if t1['file'].split("acq-")[-1] != t1['file']:
