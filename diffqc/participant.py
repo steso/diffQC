@@ -365,25 +365,39 @@ def tensorResiduals(dwi):
         for i in range(sigMap.shape[3]):
             slSig = np.ravel(sigMap[:,:,j,i])
             slReg = np.ravel(resMap[:,:,j,i])
-            varSig[j,i] = np.var(slSig[slSig>0])
-            varRes[j,i] = np.var(slReg[slReg>0])
-            # varSig[j,i] = np.mean(slSig[slSig>0])
-            # varRes[j,i] = np.mean(slReg[slReg>0])
+            if slSig[slSig>0].size:
+                varSig[j,i] = np.var(slSig[slSig>0])
+                # varSig[j,i] = np.mean(slSig[slSig>0])
+            if slReg[slReg>0].size:
+                varRes[j,i] = np.var(slReg[slReg>0])
+                # varRes[j,i] = np.mean(slReg[slReg>0])
 
     # print(varSig)
     # print(varRes)
 
     # modified Z-score
+    # medAllSig = np.median(varSig[varSig>0])
+    # medAllRes = np.median(varRes[varRes>0])
+    # varSig[varSig==0] = medAllSig
+    # varRes[varRes==0] = medAllRes
     # medSig = np.median(varSig, axis=1)
     # madSig = robust.mad(varSig, axis=1, c=1.4826)
     # medRes = np.median(varRes, axis=1)
     # madRes = robust.mad(varRes, axis=1, c=1.4826)
+    # madSig[madSig==0] = np.median(madSig[madSig>0])
+    # madRes[madRes==0] = np.median(madRes[madRes>0])
 
     # Z-score
+    medAllSig = np.mean(varSig[varSig>0])
+    medAllRes = np.mean(varRes[varRes>0])
+    varSig[varSig==0] = medAllSig
+    varRes[varRes==0] = medAllRes
     medSig = np.mean(varSig, axis=1)
     madSig = np.std(varSig, axis=1)
     medRes = np.mean(varRes, axis=1)
     madRes = np.std(varRes, axis=1)
+    madSig[madSig==0] = np.mean(madSig[madSig>0])
+    madRes[madRes==0] = np.mean(madRes[madRes>0])
 
     modZSig = np.abs(varSig - np.repeat(np.expand_dims(medSig, axis=1), varSig.shape[1], axis=1)) / np.repeat(np.expand_dims(madSig, axis=1), varSig.shape[1], axis=1)
     modZRes = np.abs(varRes - np.repeat(np.expand_dims(medRes, axis=1), varRes.shape[1], axis=1)) / np.repeat(np.expand_dims(madRes, axis=1), varRes.shape[1], axis=1)

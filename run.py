@@ -97,7 +97,9 @@ if args.analysis_level == "participant":
             dwi['stats_dir'] = stats_dir
             dwi['file'] = dwi_file
             dwi['bval'] = dwi['file'].replace("_dwi.nii.gz", "_dwi.bval")
+            dwi['bval'] = dwi['bval'].replace("_dwi.nii", "_dwi.bval")
             dwi['bvec'] = dwi['file'].replace("_dwi.nii.gz", "_dwi.bvec")
+            dwi['bvec'] = dwi['bvec'].replace("_dwi.nii", "_dwi.bvec")
 
             # Get Header and flip_sign
             img = nib.load(dwi['file'])
