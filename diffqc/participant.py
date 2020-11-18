@@ -398,8 +398,8 @@ def tensorResiduals(dwi):
     sigOutlier[modZSig>tu] = 1
     resOutlier[modZRes>tu] = 1
 
-    print(sigOutlier)
-    print(resOutlier)
+    # print(sigOutlier)
+    # print(resOutlier)
 
     dwi['stats']['signal_outlier'] = np.mean(np.ravel(sigOutlier))
     dwi['stats']['residual_outlier'] = np.mean(np.ravel(resOutlier))

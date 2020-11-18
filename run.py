@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.5
 import argparse
 import os
 import nibabel as nib
@@ -150,7 +150,7 @@ if args.analysis_level == "participant":
             numShells = sum(dwi['shells']>50) # use b<50 as b=0 images
             bShells = dwi['shells'][dwi['shells'] > 50]
             # MultiShell Datasets: perform tensor fit, residuals and fa per shell
-            if numShells < 10 and numShells > 1:
+            if numShells < 10 and numShells > 1 and sum(dwi['shells']<=50) > 0:
                 # backup MultiShell Files in Config
                 origDWI = dwi.copy()
 
